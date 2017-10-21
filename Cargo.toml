@@ -1,0 +1,6 @@
+[package]
+name = "csa"
+version = "0.1.0"
+authors = ["Tristram Gräbener <tristramg@gmail.com>"]
+
+[dependencies]
