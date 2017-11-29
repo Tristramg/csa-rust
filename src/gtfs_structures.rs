@@ -113,11 +113,12 @@ pub struct Gtfs {
 
 impl Gtfs {
     pub fn print_stats(&self) {
-        println!("Read in {} ms", self.read_duration);
-        println!("Stops: {}", self.stops.len());
-        println!("Routes: {}", self.routes.len());
-        println!("Trips: {}", self.trips.len());
-        println!("Stop Times: {}", self.stop_times.len());
+        println!("GTFS data:");
+        println!("  Read in {} ms", self.read_duration);
+        println!("  Stops: {}", self.stops.len());
+        println!("  Routes: {}", self.routes.len());
+        println!("  Trips: {}", self.trips.len());
+        println!("  Stop Times: {}", self.stop_times.len());
     }
 
     pub fn new(path: &str) -> Result<Gtfs, Box<Error>> {
