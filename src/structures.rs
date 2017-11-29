@@ -47,15 +47,18 @@ impl Timetable {
                     }
                 })
                 .collect(),
-            connections: Timetable::connections(&gtfs, start_date, horizon),
+            connections: connections,
             footpaths: Vec::new(),
+            transform_duration: transform_duration,
         }
     }
 
     pub fn print_stats(&self) {
-        println!("Stops: {}", self.stops.len());
-        println!("Connections: {}", self.connections.len());
-        println!("Footpaths: {}", self.footpaths.len());
+        println!("Final data structures: ");
+        println!("  Stops: {}", self.stops.len());
+        println!("  Footpaths: {}", self.footpaths.len());
+        println!("  Connections: {}", self.connections.len());
+        println!("  Connections built in {} ms", self.transform_duration);
     }
 
     fn connections(gtfs: &Gtfs, start_date: NaiveDate, horizon: u16) -> Vec<Connection> {
