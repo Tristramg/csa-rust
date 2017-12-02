@@ -57,7 +57,7 @@ pub struct Stop {
     #[serde(rename = "stop_id")] pub id: String,
     pub stop_name: String,
     #[serde(deserialize_with = "deserialize_location_type")] pub location_type: LocationType,
-    parent_station: Option<String>,
+    pub parent_station: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

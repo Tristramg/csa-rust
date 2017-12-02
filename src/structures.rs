@@ -8,6 +8,8 @@ use self::itertools::Itertools;
 struct Stop {
     id: String,
     name: String,
+    parent_station: Option<String>,
+    location_type: u8,
 }
 
 struct Connection {
@@ -18,13 +20,16 @@ struct Connection {
     arr_stop: u32,
 }
 
-struct Footpath {}
+struct Footpath {
+    to: u32,
+    duration: u16,
+}
 
 pub struct Timetable {
     transform_duration: i64,
     stops: Vec<Stop>,
     connections: Vec<Connection>,
-    footpaths: Vec<Footpath>,
+    footpaths: Vec<Vec<Footpath>>,
 }
 
 impl Timetable {
@@ -52,21 +57,13 @@ impl Timetable {
             .collect();
 
         let now = Utc::now();
-        let connections = Timetable::connections(&gtfs, start_date, horizon);
+        let connections = Timetable::connections(gtfs, start_date, horizon, &stop_indices);
         let transform_duration = Utc::now().signed_duration_since(now).num_milliseconds();
 
         Timetable {
-            stops: gtfs.stops
-                .iter()
-                .map(|stop| {
-                    Stop {
-                        id: stop.id.to_owned(),
-                        name: stop.stop_name.to_owned(),
-                    }
-                })
-                .collect(),
+            footpaths: Timetable::footpaths(&stops, &stop_indices),
+            stops: stops,
             connections: connections,
-            footpaths: Vec::new(),
             transform_duration: transform_duration,
         }
     }
@@ -74,24 +71,27 @@ impl Timetable {
     pub fn print_stats(&self) {
         println!("Final data structures: ");
         println!("  Stops: {}", self.stops.len());
-        println!("  Footpaths: {}", self.footpaths.len());
+        println!(
+            "  Footpaths: {}",
+            self.footpaths.iter().map(|e| e.len()).sum::<usize>()
+        );
         println!("  Connections: {}", self.connections.len());
         println!("  Connections built in {} ms", self.transform_duration);
     }
 
-    fn connections(gtfs: &Gtfs, start_date: NaiveDate, horizon: u16) -> Vec<Connection> {
+    fn connections(
+        gtfs: Gtfs,
+        start_date: NaiveDate,
+        horizon: u16,
+        stop_indices: &HashMap<String, u32>,
+    ) -> Vec<Connection> {
         let mut result = Vec::new();
 
-        let mut trip_indices = HashMap::new();
-        let trip_ids: Vec<&String> = gtfs.trips.keys().collect();
-        for i in 0..trip_ids.len() {
-            trip_indices.insert(trip_ids[i], i);
-        }
-
-        let mut stop_indices = HashMap::new();
-        for i in 0..gtfs.stops.len() {
-            stop_indices.insert(&gtfs.stops[i].id, i as u32);
-        }
+        let trip_indices: HashMap<_, _> = gtfs.trips
+            .keys()
+            .enumerate()
+            .map(|(index, id)| (id, index))
+            .collect();
 
         for (trip_id, stop_times) in &(&gtfs.stop_times).into_iter().group_by(|elt| &elt.trip_id) {
             let trip_index = *trip_indices
@@ -125,6 +125,42 @@ impl Timetable {
                 }
             }
         }
+        result
+    }
+
+    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, u32>) -> Vec<Vec<Footpath>> {
+        let mut result: Vec<Vec<_>> = stops.iter().map(|_| Vec::new()).collect();
+        let mut stop_areas = HashMap::new();
+
+        for stop in stops {
+            if let Some(ref parent) = stop.parent_station {
+                if stop.location_type == LocationType::StopPoint {
+                    let children = stop_areas.entry(parent).or_insert(Vec::new());
+                    children.push(stop.id.to_owned())
+                }
+            }
+        }
+
+        for (_, children) in stop_areas {
+            for (child_a, child_b) in children
+                .iter()
+                .cartesian_product(&children)
+                .filter(|&(a, b)| a == b)
+            {
+                let index_a = *stop_indices
+                    .get(child_a)
+                    .expect(&format!("Missing child station {}", child_a));
+                let index_b = *stop_indices
+                    .get(child_b)
+                    .expect(&format!("Missing child station {}", child_b));
+
+                result[index_a as usize].push(Footpath {
+                    duration: 5,
+                    to: index_b,
+                });
+            }
+        }
+
         result
     }
 }
