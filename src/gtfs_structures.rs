@@ -2,13 +2,14 @@ extern crate chrono;
 extern crate csv;
 extern crate regex;
 extern crate serde;
+extern crate failure;
 
-use std::error::Error;
 use std::fs::File;
+use std::collections::{HashMap, HashSet};
 use self::chrono::prelude::*;
 use self::serde::{Deserialize, Deserializer};
-use std::collections::{HashMap, HashSet};
 use self::chrono::Duration;
+use self::failure::Error;
 
 #[derive(Debug, Deserialize)]
 pub struct Calendar {
@@ -121,7 +122,7 @@ impl Gtfs {
         println!("  Stop Times: {}", self.stop_times.len());
     }
 
-    pub fn new(path: &str) -> Result<Gtfs, Box<Error>> {
+    pub fn new(path: &str) -> Result<Gtfs, Error> {
         let now = Utc::now();
         Ok(Gtfs {
             calendar: Gtfs::read_calendars(path)?,
@@ -134,7 +135,7 @@ impl Gtfs {
         })
     }
 
-    fn read_calendars(path: &str) -> Result<HashMap<String, Calendar>, Box<Error>> {
+    fn read_calendars(path: &str) -> Result<HashMap<String, Calendar>, Error> {
         let file = File::open(path.to_owned() + "calendar.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut calendars = HashMap::new();
@@ -145,7 +146,7 @@ impl Gtfs {
         Ok(calendars)
     }
 
-    fn read_calendar_dates(path: &str) -> Result<HashMap<String, Vec<CalendarDate>>, Box<Error>> {
+    fn read_calendar_dates(path: &str) -> Result<HashMap<String, Vec<CalendarDate>>, Error> {
         let file = File::open(path.to_owned() + "calendar_dates.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut calendar_dates = HashMap::new();
@@ -157,7 +158,7 @@ impl Gtfs {
         Ok(calendar_dates)
     }
 
-    fn read_stops(path: &str) -> Result<Vec<Stop>, Box<Error>> {
+    fn read_stops(path: &str) -> Result<Vec<Stop>, Error> {
         let file = File::open(path.to_owned() + "stops.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut stops = Vec::new();
@@ -168,7 +169,7 @@ impl Gtfs {
         Ok(stops)
     }
 
-    fn read_routes(path: &str) -> Result<HashMap<String, Route>, Box<Error>> {
+    fn read_routes(path: &str) -> Result<HashMap<String, Route>, Error> {
         let file = File::open(path.to_owned() + "routes.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut routes = HashMap::new();
@@ -179,7 +180,7 @@ impl Gtfs {
         Ok(routes)
     }
 
-    fn read_trips(path: &str) -> Result<HashMap<String, Trip>, Box<Error>> {
+    fn read_trips(path: &str) -> Result<HashMap<String, Trip>, Error> {
         let file = File::open(path.to_owned() + "trips.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut trips = HashMap::new();
@@ -190,7 +191,7 @@ impl Gtfs {
         Ok(trips)
     }
 
-    fn read_stop_times(path: &str) -> Result<Vec<StopTime>, Box<Error>> {
+    fn read_stop_times(path: &str) -> Result<Vec<StopTime>, Error> {
         let file = File::open(path.to_owned() + "stop_times.txt")?;
         let mut reader = csv::Reader::from_reader(file);
         let mut stop_times = Vec::new();
