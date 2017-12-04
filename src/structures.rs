@@ -1,6 +1,6 @@
 extern crate chrono;
 extern crate itertools;
-use gtfs_structures::{Gtfs, LocationType};
+use gtfs_structures;
 use std::collections::HashMap;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
@@ -9,7 +9,19 @@ struct Stop {
     id: String,
     name: String,
     parent_station: Option<String>,
-    location_type: u8,
+    location_type: gtfs_structures::LocationType,
+}
+
+
+impl<'a> From<&'a gtfs_structures::Stop> for Stop {
+    fn from(stop: &gtfs_structures::Stop) -> Self {
+        Self {
+            id: stop.id.to_owned(),
+            name: stop.stop_name.to_owned(),
+            parent_station: stop.parent_station.to_owned(),
+            location_type: stop.location_type,
+        }
+    }
 }
 
 struct Connection {
@@ -33,22 +45,12 @@ pub struct Timetable {
 }
 
 impl Timetable {
-    pub fn from_gtfs(gtfs: Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
+    pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
         let start_date = start_date_str
             .parse::<NaiveDate>()
             .expect("Could not parse start date");
 
-        let stops: Vec<_> = gtfs.stops
-            .iter()
-            .map(|stop| {
-                Stop {
-                    id: stop.id.to_owned(),
-                    name: stop.stop_name.to_owned(),
-                    parent_station: stop.parent_station.to_owned(),
-                    location_type: stop.location_type,
-                }
-            })
-            .collect();
+        let stops: Vec<_> = gtfs.stops.iter().map(Stop::from).collect();
 
         let stop_indices = stops
             .iter()
@@ -80,7 +82,7 @@ impl Timetable {
     }
 
     fn connections(
-        gtfs: Gtfs,
+        gtfs: gtfs_structures::Gtfs,
         start_date: NaiveDate,
         horizon: u16,
         stop_indices: &HashMap<String, u32>,
@@ -134,7 +136,7 @@ impl Timetable {
 
         for stop in stops {
             if let Some(ref parent) = stop.parent_station {
-                if stop.location_type == LocationType::StopPoint {
+                if stop.location_type == gtfs_structures::LocationType::StopPoint {
                     let children = stop_areas.entry(parent).or_insert(Vec::new());
                     children.push(stop.id.to_owned())
                 }
