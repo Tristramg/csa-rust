@@ -10,6 +10,13 @@ use self::serde::{Deserialize, Deserializer};
 use std::collections::{HashMap, HashSet};
 use self::chrono::Duration;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum LocationType {
+    StopPoint = 0,
+    StopArea = 1,
+    StationEntrance = 2,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Calendar {
     #[serde(rename = "service_id")] id: String,
@@ -49,7 +56,7 @@ pub struct CalendarDate {
 pub struct Stop {
     #[serde(rename = "stop_id")] pub id: String,
     pub stop_name: String,
-    location_type: Option<u8>,
+    #[serde(deserialize_with = "deserialize_location_type")] pub location_type: LocationType,
     parent_station: Option<String>,
 }
 
@@ -99,6 +106,18 @@ where
         &v[0].parse().expect(&format!("Invalid time format {}", s)) * 60u16
             + &v[1].parse().expect(&format!("Invalid time format {}", s)), /* + &v[2].parse().unwrap()*/
     )
+}
+
+fn deserialize_location_type<'de, D>(deserializer: D) -> Result<LocationType, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = String::deserialize(deserializer)?;
+    Ok(match s.as_str() {
+        "1" => LocationType::StopArea,
+        "2" => LocationType::StationEntrance,
+        _ => LocationType::StopPoint
+    })
 }
 
 pub struct Gtfs {

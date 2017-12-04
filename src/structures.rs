@@ -1,6 +1,6 @@
 extern crate chrono;
 extern crate itertools;
-use gtfs_structures::Gtfs;
+use gtfs_structures::{Gtfs, LocationType};
 use std::collections::HashMap;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
@@ -32,6 +32,24 @@ impl Timetable {
         let start_date = start_date_str
             .parse::<NaiveDate>()
             .expect("Could not parse start date");
+
+        let stops: Vec<_> = gtfs.stops
+            .iter()
+            .map(|stop| {
+                Stop {
+                    id: stop.id.to_owned(),
+                    name: stop.stop_name.to_owned(),
+                    parent_station: stop.parent_station.to_owned(),
+                    location_type: stop.location_type,
+                }
+            })
+            .collect();
+
+        let stop_indices = stops
+            .iter()
+            .enumerate()
+            .map(|(index, stop)| (stop.id.to_owned(), index as u32))
+            .collect();
 
         let now = Utc::now();
         let connections = Timetable::connections(&gtfs, start_date, horizon);
