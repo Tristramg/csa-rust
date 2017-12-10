@@ -1,8 +1,8 @@
 extern crate chrono;
 extern crate csv;
+extern crate failure;
 extern crate regex;
 extern crate serde;
-extern crate failure;
 
 use std::fs::File;
 use std::collections::{HashMap, HashSet};
@@ -173,12 +173,10 @@ impl Gtfs {
     fn read_calendars(path: &str) -> Result<HashMap<String, Calendar>, Error> {
         let file = File::open(path.to_owned() + "calendar.txt")?;
         let mut reader = csv::Reader::from_reader(file);
-        let mut calendars = HashMap::new();
-        for result in reader.deserialize() {
-            let record: Calendar = result?;
-            calendars.insert(record.id.to_owned(), record);
-        }
-        Ok(calendars)
+        Ok(reader
+            .deserialize()
+            .map(|res| res.map(|e: Calendar| (e.id.to_owned(), e)))
+            .collect::<Result<_, _>>()?)
     }
 
     fn read_calendar_dates(path: &str) -> Result<HashMap<String, Vec<CalendarDate>>, Error> {
@@ -198,44 +196,31 @@ impl Gtfs {
     fn read_stops(path: &str) -> Result<Vec<Stop>, Error> {
         let file = File::open(path.to_owned() + "stops.txt")?;
         let mut reader = csv::Reader::from_reader(file);
-        let mut stops = Vec::new();
-        for result in reader.deserialize() {
-            let record: Stop = result?;
-            stops.push(record);
-        }
-        Ok(stops)
+        Ok(reader.deserialize().collect::<Result<_, _>>()?)
     }
 
     fn read_routes(path: &str) -> Result<HashMap<String, Route>, Error> {
         let file = File::open(path.to_owned() + "routes.txt")?;
         let mut reader = csv::Reader::from_reader(file);
-        let mut routes = HashMap::new();
-        for result in reader.deserialize() {
-            let record: Route = result?;
-            routes.insert(record.id.to_owned(), record);
-        }
-        Ok(routes)
+        Ok(reader
+            .deserialize()
+            .map(|res| res.map(|e: Route| (e.id.to_owned(), e)))
+            .collect::<Result<_, _>>()?)
     }
 
     fn read_trips(path: &str) -> Result<HashMap<String, Trip>, Error> {
         let file = File::open(path.to_owned() + "trips.txt")?;
         let mut reader = csv::Reader::from_reader(file);
-        let mut trips = HashMap::new();
-        for result in reader.deserialize() {
-            let record: Trip = result?;
-            trips.insert(record.id.to_owned(), record);
-        }
-        Ok(trips)
+        Ok(reader
+            .deserialize()
+            .map(|res| res.map(|e: Trip| (e.id.to_owned(), e)))
+            .collect::<Result<_, _>>()?)
     }
 
     fn read_stop_times(path: &str) -> Result<Vec<StopTime>, Error> {
         let file = File::open(path.to_owned() + "stop_times.txt")?;
         let mut reader = csv::Reader::from_reader(file);
-        let mut stop_times = Vec::new();
-        for result in reader.deserialize() {
-            let record: StopTime = result?;
-            stop_times.push(record);
-        }
+        let mut stop_times: Vec<StopTime> = reader.deserialize().collect::<Result<_, _>>()?;
 
         stop_times.sort_by(|a, b| {
             a.trip_id.cmp(&b.trip_id).then(a.stop_sequence.cmp(
