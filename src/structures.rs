@@ -149,7 +149,7 @@ impl Timetable {
         for (_, children) in stop_areas {
             for (child_a, child_b) in
                 children.iter().cartesian_product(&children).filter(
-                    |&(a, b)| a == b,
+                    |&(a, b)| a != b,
                 )
             {
                 let index_a = *stop_indices.get(child_a).expect(&format!(
