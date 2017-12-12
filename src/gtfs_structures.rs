@@ -302,7 +302,7 @@ mod tests {
     #[test]
     fn read_stop() {
         let stops = Gtfs::read_stops("fixtures/").unwrap();
-        assert_eq!(4, stops.len());
+        assert_eq!(5, stops.len());
         assert_eq!(LocationType::StopArea, stops[0].location_type);
         assert_eq!(LocationType::StopPoint, stops[1].location_type);
         assert_eq!(Some("1".to_owned()), stops[2].parent_station)
