@@ -171,3 +171,19 @@ impl Timetable {
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_gtfs() {
+        let gtfs = gtfs_structures::Gtfs::new("fixtures/").unwrap();
+        let timetable = Timetable::from_gtfs(gtfs, "2017-1-1", 10);
+        assert_eq!(5, timetable.stops.len());
+        assert_eq!(2, timetable.connections.len());
+        assert_eq!(5, timetable.footpaths.len());
+        assert_eq!(4, timetable.footpaths[2][0].to);
+        assert_eq!(2, timetable.footpaths[4][0].to);
+    }
+}
