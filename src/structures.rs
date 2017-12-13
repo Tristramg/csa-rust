@@ -12,7 +12,6 @@ struct Stop {
     location_type: gtfs_structures::LocationType,
 }
 
-
 impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     fn from(stop: &gtfs_structures::Stop) -> Self {
         Self {
@@ -46,9 +45,9 @@ pub struct Timetable {
 
 impl Timetable {
     pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
-        let start_date = start_date_str.parse::<NaiveDate>().expect(
-            "Could not parse start date",
-        );
+        let start_date = start_date_str
+            .parse::<NaiveDate>()
+            .expect("Could not parse start date");
 
         let stops: Vec<_> = gtfs.stops.iter().map(Stop::from).collect();
 
@@ -96,10 +95,9 @@ impl Timetable {
             .collect();
 
         for (trip_id, stop_times) in &(&gtfs.stop_times).into_iter().group_by(|elt| &elt.trip_id) {
-            let trip_index = *trip_indices.get(trip_id).expect(&format!(
-                "Unknown trip id {}",
-                trip_id
-            ));
+            let trip_index = *trip_indices
+                .get(trip_id)
+                .expect(&format!("Unknown trip id {}", trip_id));
             let gtfs_trip = gtfs.trips.get(trip_id).expect("Something went wrong");
 
             let days = gtfs.trip_days(&gtfs_trip.service_id, start_date);
@@ -107,15 +105,13 @@ impl Timetable {
             for (departure, arrival) in stop_times.tuple_windows() {
                 let dep_time = departure.departure_time;
                 let arr_time = arrival.arrival_time;
-                let dep_stop = *stop_indices.get(&departure.stop_id).expect(&format!(
-                    "Unknown stop id {}",
-                    departure.stop_id
-                ));
+                let dep_stop = *stop_indices
+                    .get(&departure.stop_id)
+                    .expect(&format!("Unknown stop id {}", departure.stop_id));
 
-                let arr_stop = *stop_indices.get(&arrival.stop_id).expect(&format!(
-                    "Unknown stop id {}",
-                    arrival.stop_id
-                ));
+                let arr_stop = *stop_indices
+                    .get(&arrival.stop_id)
+                    .expect(&format!("Unknown stop id {}", arrival.stop_id));
 
                 for day in &days {
                     if *day < horizon {
@@ -147,19 +143,17 @@ impl Timetable {
         }
 
         for (_, children) in stop_areas {
-            for (child_a, child_b) in
-                children.iter().cartesian_product(&children).filter(
-                    |&(a, b)| a == b,
-                )
+            for (child_a, child_b) in children
+                .iter()
+                .cartesian_product(&children)
+                .filter(|&(a, b)| a != b)
             {
-                let index_a = *stop_indices.get(child_a).expect(&format!(
-                    "Missing child station {}",
-                    child_a
-                ));
-                let index_b = *stop_indices.get(child_b).expect(&format!(
-                    "Missing child station {}",
-                    child_b
-                ));
+                let index_a = *stop_indices
+                    .get(child_a)
+                    .expect(&format!("Missing child station {}", child_a));
+                let index_b = *stop_indices
+                    .get(child_b)
+                    .expect(&format!("Missing child station {}", child_b));
 
                 result[index_a as usize].push(Footpath {
                     duration: 5,
@@ -169,5 +163,21 @@ impl Timetable {
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_gtfs() {
+        let gtfs = gtfs_structures::Gtfs::new("fixtures/").unwrap();
+        let timetable = Timetable::from_gtfs(gtfs, "2017-1-1", 10);
+        assert_eq!(5, timetable.stops.len());
+        assert_eq!(2, timetable.connections.len());
+        assert_eq!(5, timetable.footpaths.len());
+        assert_eq!(4, timetable.footpaths[2][0].to);
+        assert_eq!(2, timetable.footpaths[4][0].to);
     }
 }
