@@ -63,7 +63,66 @@ pub struct TimetableBuilder {
     last_stop: Option<(usize, u16)>,
     connections: Vec<Connection>,
 }
+
+impl TimetableBuilder {
+    pub fn trip<'a>(&'a mut self) -> &'a mut Self {
+        self.last_stop = None;
+        self.trips.push(Trip {});
+        self
+    }
+
+    fn stop(&mut self, stop_id: &str) -> usize {
+        let index = self.stop_map.len();
+        self.stop_map
+            .entry(stop_id.to_owned())
+            .or_insert(index)
+            .clone()
+    }
+
+    pub fn s<'a>(&'a mut self, stop: &str, time: &str) -> &'a mut Self {
+        let trip_id = self.trips.len();
+        if trip_id == 0 {
+            panic!("Timetable builder: trying to add a stop without a trip");
+        }
+        let stop_index = self.stop(stop);
+        let time = gtfs_structures::parse_time(time.to_owned());
+
+        if let Some(prev) = self.last_stop {
+            self.connections.push(Connection {
+                trip: trip_id,
+                dep_stop: prev.0,
+                dep_time: prev.1,
+                arr_stop: stop_index,
+                arr_time: time,
+            })
 }
+
+        self.last_stop = Some((stop_index, time));
+
+        self
+    }
+    pub fn build(self) -> Timetable {
+        Timetable {
+            trips: self.trips,
+            connections: self.connections,
+            stops: self.stop_map
+                .iter()
+                .map(|(id, _)| {
+                    Stop {
+                        id: id.to_owned(),
+                        name: id.to_owned(),
+                        location_type: gtfs_structures::LocationType::StopPoint,
+                        parent_station: None,
+                    }
+                })
+                .collect(),
+            footpaths: Vec::new(),
+            transform_duration: 0,
+        }
+    }
+}
+
+
 
 impl Timetable {
     pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
@@ -188,6 +247,15 @@ impl Timetable {
 
         result
     }
+
+    pub fn builder() -> TimetableBuilder {
+        TimetableBuilder {
+            connections: Vec::new(),
+            last_stop: None,
+            stop_map: HashMap::new(),
+            trips: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -203,5 +271,32 @@ mod tests {
         assert_eq!(5, timetable.footpaths.len());
         assert_eq!(4, timetable.footpaths[2][0].to);
         assert_eq!(2, timetable.footpaths[4][0].to);
+    }
+
+    #[test]
+    fn builder() {
+        let mut b = Timetable::builder();
+        b.trip();
+        assert_eq!(1, b.trips.len());
+        assert_eq!(0, b.stop("a"));
+        assert_eq!(0, b.stop("a"));
+        assert_eq!(1, b.stop("b"));
+    }
+
+    #[test]
+    fn builder_transform() {
+        let mut b = Timetable::builder();
+        b.trip()
+            .s("a", "0:10")
+            .s("b", "0:20")
+            .s("c", "0:30")
+            .trip()
+            .s("b", "0:00")
+            .s("d", "0:40");
+
+        let t = b.build();
+        assert_eq!(4, t.stops.len());
+        assert_eq!(2, t.trips.len());
+        assert_eq!(3, t.connections.len());
     }
 }
