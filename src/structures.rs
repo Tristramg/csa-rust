@@ -80,6 +80,7 @@ impl Timetable {
             .collect();
 
         let now = Utc::now();
+        let trips = gtfs.trips.iter().map(|_| Trip {}).collect();
         let connections = Timetable::connections(gtfs, start_date, horizon, &stop_indices);
         let transform_duration = Utc::now().signed_duration_since(now).num_milliseconds();
 
@@ -88,6 +89,7 @@ impl Timetable {
             stops: stops,
             connections: connections,
             transform_duration: transform_duration,
+            trips: trips,
         }
     }
 
