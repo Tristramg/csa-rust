@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
 
-struct Stop {
+pub struct Stop {
     id: String,
     name: String,
     parent_station: Option<String>,
@@ -48,10 +48,21 @@ pub struct Footpath {
 }
 
 pub struct Timetable {
-    transform_duration: i64,
-    stops: Vec<Stop>,
+    pub transform_duration: i64,
+    pub stops: Vec<Stop>,
+    pub connections: Vec<Connection>,
+    pub footpaths: Vec<Vec<Footpath>>,
+    pub trips: Vec<Trip>,
+}
+
+pub struct Trip {}
+
+pub struct TimetableBuilder {
+    stop_map: HashMap<String, usize>,
+    trips: Vec<Trip>,
+    last_stop: Option<(usize, u16)>,
     connections: Vec<Connection>,
-    footpaths: Vec<Vec<Footpath>>,
+}
 }
 
 impl Timetable {
