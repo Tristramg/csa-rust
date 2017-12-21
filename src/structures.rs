@@ -23,16 +23,27 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     }
 }
 
-struct Connection {
-    trip: u32,
-    dep_time: u16,
-    arr_time: u16,
-    dep_stop: u32,
-    arr_stop: u32,
+impl Stop {
+    pub fn new(id: &str) -> Self {
+        Self {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            parent_station: None,
+            location_type: gtfs_structures::LocationType::StopPoint,
+        }
+    }
 }
 
-struct Footpath {
-    to: u32,
+pub struct Connection {
+    pub trip: usize,
+    pub dep_time: u16,
+    pub arr_time: u16,
+    pub dep_stop: usize,
+    pub arr_stop: usize,
+}
+
+pub struct Footpath {
+    to: usize,
     duration: u16,
 }
 
@@ -54,7 +65,7 @@ impl Timetable {
         let stop_indices = stops
             .iter()
             .enumerate()
-            .map(|(index, stop)| (stop.id.to_owned(), index as u32))
+            .map(|(index, stop)| (stop.id.to_owned(), index))
             .collect();
 
         let now = Utc::now();
@@ -84,7 +95,7 @@ impl Timetable {
         gtfs: gtfs_structures::Gtfs,
         start_date: NaiveDate,
         horizon: u16,
-        stop_indices: &HashMap<String, u32>,
+        stop_indices: &HashMap<String, usize>,
     ) -> Vec<Connection> {
         let mut result = Vec::new();
 
@@ -116,7 +127,7 @@ impl Timetable {
                 for day in &days {
                     if *day < horizon {
                         result.push(Connection {
-                            trip: trip_index as u32,
+                            trip: trip_index,
                             dep_time: dep_time + (day * 24 * 60),
                             arr_time: arr_time,
                             dep_stop: dep_stop,
@@ -129,7 +140,7 @@ impl Timetable {
         result
     }
 
-    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, u32>) -> Vec<Vec<Footpath>> {
+    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, usize>) -> Vec<Vec<Footpath>> {
         let mut result: Vec<Vec<_>> = stops.iter().map(|_| Vec::new()).collect();
         let mut stop_areas = HashMap::new();
 
