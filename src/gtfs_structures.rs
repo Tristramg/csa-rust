@@ -95,17 +95,19 @@ where
     NaiveDate::parse_from_str(&s, "%Y%m%d").map_err(serde::de::Error::custom)
 }
 
+pub fn parse_time(s: String) -> u16 {
+    let v: Vec<&str> = s.split(':').collect();
+
+    &v[0].parse().expect(&format!("Invalid time format {}", s)) * 60u16
+        + &v[1].parse().expect(&format!("Invalid time format {}", s))
+}
+
 fn deserialize_time<'de, D>(deserializer: D) -> Result<u16, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = String::deserialize(deserializer)?;
-    let v: Vec<&str> = s.split(':').collect();
-
-    Ok(
-        &v[0].parse().expect(&format!("Invalid time format {}", s)) * 60u16
-            + &v[1].parse().expect(&format!("Invalid time format {}", s)),
-    )
+    Ok(parse_time(s))
 }
 
 fn deserialize_location_type<'de, D>(deserializer: D) -> Result<LocationType, D::Error>
