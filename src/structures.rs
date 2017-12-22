@@ -85,7 +85,8 @@ impl TimetableBuilder {
             panic!("Timetable builder: trying to add a stop without a trip");
         }
         let stop_index = self.stop(stop);
-        let time = gtfs_structures::parse_time(time.to_owned());
+        let parsed_time = gtfs_structures::parse_time(time.to_owned())
+            .expect(&format!("Invalid time format {}", time));
 
         if let Some(prev) = self.last_stop {
             self.connections.push(Connection {
@@ -93,11 +94,11 @@ impl TimetableBuilder {
                 dep_stop: prev.0,
                 dep_time: prev.1,
                 arr_stop: stop_index,
-                arr_time: time,
+                arr_time: parsed_time,
             })
-}
+        }
 
-        self.last_stop = Some((stop_index, time));
+        self.last_stop = Some((stop_index, parsed_time));
 
         self
     }
