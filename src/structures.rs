@@ -79,7 +79,7 @@ impl TimetableBuilder {
 
         if let Some(prev) = self.last_stop {
             self.connections.push(Connection {
-                trip: trip_id,
+                trip: trip_id - 1,
                 dep_stop: prev.0,
                 dep_time: prev.1,
                 arr_stop: stop_index,
