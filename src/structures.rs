@@ -91,7 +91,8 @@ impl TimetableBuilder {
 
         self
     }
-    pub fn build(self) -> Timetable {
+    pub fn build(mut self) -> Timetable {
+        self.connections.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
         Timetable {
             trips: self.trips,
             connections: self.connections,
@@ -199,6 +200,9 @@ impl Timetable {
                 }
             }
         }
+
+        // We want the connections by decreasing departure time
+        result.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
         result
     }
 
