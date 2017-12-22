@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
 
-struct Stop {
+pub struct Stop {
     id: String,
     name: String,
     parent_station: Option<String>,
@@ -23,25 +23,107 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     }
 }
 
-struct Connection {
-    trip: u32,
-    dep_time: u16,
-    arr_time: u16,
-    dep_stop: u32,
-    arr_stop: u32,
+impl Stop {
+    pub fn new(id: &str) -> Self {
+        Self {
+            id: id.to_owned(),
+            name: id.to_owned(),
+            parent_station: None,
+            location_type: gtfs_structures::LocationType::StopPoint,
+        }
+    }
 }
 
-struct Footpath {
-    to: u32,
+pub struct Connection {
+    pub trip: usize,
+    pub dep_time: u16,
+    pub arr_time: u16,
+    pub dep_stop: usize,
+    pub arr_stop: usize,
+}
+
+pub struct Footpath {
+    to: usize,
     duration: u16,
 }
 
 pub struct Timetable {
-    transform_duration: i64,
-    stops: Vec<Stop>,
-    connections: Vec<Connection>,
-    footpaths: Vec<Vec<Footpath>>,
+    pub transform_duration: i64,
+    pub stops: Vec<Stop>,
+    pub connections: Vec<Connection>,
+    pub footpaths: Vec<Vec<Footpath>>,
+    pub trips: Vec<Trip>,
 }
+
+pub struct Trip {}
+
+pub struct TimetableBuilder {
+    stop_map: HashMap<String, usize>,
+    trips: Vec<Trip>,
+    last_stop: Option<(usize, u16)>,
+    connections: Vec<Connection>,
+}
+
+impl TimetableBuilder {
+    pub fn trip<'a>(&'a mut self) -> &'a mut Self {
+        self.last_stop = None;
+        self.trips.push(Trip {});
+        self
+    }
+
+    fn stop(&mut self, stop_id: &str) -> usize {
+        let index = self.stop_map.len();
+        self.stop_map
+            .entry(stop_id.to_owned())
+            .or_insert(index)
+            .clone()
+    }
+
+    pub fn s<'a>(&'a mut self, stop: &str, time: &str) -> &'a mut Self {
+        let trip_id = self.trips.len();
+        if trip_id == 0 {
+            panic!("Timetable builder: trying to add a stop without a trip");
+        }
+        let stop_index = self.stop(stop);
+        let parsed_time = gtfs_structures::parse_time(time.to_owned())
+            .expect(&format!("Invalid time format {}", time));
+
+        if let Some(prev) = self.last_stop {
+            self.connections.push(Connection {
+                trip: trip_id,
+                dep_stop: prev.0,
+                dep_time: prev.1,
+                arr_stop: stop_index,
+                arr_time: parsed_time,
+            })
+        }
+
+        self.last_stop = Some((stop_index, parsed_time));
+
+        self
+    }
+    pub fn build(self) -> Timetable {
+        Timetable {
+            trips: self.trips,
+            connections: self.connections,
+            stops: self.stop_map
+                .iter()
+                .map(|(id, _)| {
+                    Stop {
+                        id: id.to_owned(),
+                        name: id.to_owned(),
+                        location_type: gtfs_structures::LocationType::StopPoint,
+                        parent_station: None,
+                    }
+                })
+                .collect(),
+            footpaths: Vec::new(),
+            transform_duration: 0,
+        }
+    }
+}
+
+
 
 impl Timetable {
     pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
@@ -54,10 +136,11 @@ impl Timetable {
         let stop_indices = stops
             .iter()
             .enumerate()
-            .map(|(index, stop)| (stop.id.to_owned(), index as u32))
+            .map(|(index, stop)| (stop.id.to_owned(), index))
             .collect();
 
         let now = Utc::now();
+        let trips = gtfs.trips.iter().map(|_| Trip {}).collect();
         let connections = Timetable::connections(gtfs, start_date, horizon, &stop_indices);
         let transform_duration = Utc::now().signed_duration_since(now).num_milliseconds();
 
@@ -66,6 +149,7 @@ impl Timetable {
             stops: stops,
             connections: connections,
             transform_duration: transform_duration,
+            trips: trips,
         }
     }
 
@@ -84,7 +168,7 @@ impl Timetable {
         gtfs: gtfs_structures::Gtfs,
         start_date: NaiveDate,
         horizon: u16,
-        stop_indices: &HashMap<String, u32>,
+        stop_indices: &HashMap<String, usize>,
     ) -> Vec<Connection> {
         let mut result = Vec::new();
 
@@ -116,7 +200,7 @@ impl Timetable {
                 for day in &days {
                     if *day < horizon {
                         result.push(Connection {
-                            trip: trip_index as u32,
+                            trip: trip_index,
                             dep_time: dep_time + (day * 24 * 60),
                             arr_time: arr_time,
                             dep_stop: dep_stop,
@@ -129,7 +213,7 @@ impl Timetable {
         result
     }
 
-    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, u32>) -> Vec<Vec<Footpath>> {
+    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, usize>) -> Vec<Vec<Footpath>> {
         let mut result: Vec<Vec<_>> = stops.iter().map(|_| Vec::new()).collect();
         let mut stop_areas = HashMap::new();
 
@@ -164,6 +248,15 @@ impl Timetable {
 
         result
     }
+
+    pub fn builder() -> TimetableBuilder {
+        TimetableBuilder {
+            connections: Vec::new(),
+            last_stop: None,
+            stop_map: HashMap::new(),
+            trips: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -179,5 +272,32 @@ mod tests {
         assert_eq!(5, timetable.footpaths.len());
         assert_eq!(4, timetable.footpaths[2][0].to);
         assert_eq!(2, timetable.footpaths[4][0].to);
+    }
+
+    #[test]
+    fn builder() {
+        let mut b = Timetable::builder();
+        b.trip();
+        assert_eq!(1, b.trips.len());
+        assert_eq!(0, b.stop("a"));
+        assert_eq!(0, b.stop("a"));
+        assert_eq!(1, b.stop("b"));
+    }
+
+    #[test]
+    fn builder_transform() {
+        let mut b = Timetable::builder();
+        b.trip()
+            .s("a", "0:10")
+            .s("b", "0:20")
+            .s("c", "0:30")
+            .trip()
+            .s("b", "0:00")
+            .s("d", "0:40");
+
+        let t = b.build();
+        assert_eq!(4, t.stops.len());
+        assert_eq!(2, t.trips.len());
+        assert_eq!(3, t.connections.len());
     }
 }
