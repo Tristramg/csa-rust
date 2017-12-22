@@ -23,17 +23,6 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     }
 }
 
-impl Stop {
-    pub fn new(id: &str) -> Self {
-        Self {
-            id: id.to_owned(),
-            name: id.to_owned(),
-            parent_station: None,
-            location_type: gtfs_structures::LocationType::StopPoint,
-        }
-    }
-}
-
 pub struct Connection {
     pub trip: usize,
     pub dep_time: u16,
