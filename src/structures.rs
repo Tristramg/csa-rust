@@ -192,7 +192,7 @@ impl Timetable {
                         result.push(Connection {
                             trip: trip_index,
                             dep_time: dep_time + (day * 24 * 60),
-                            arr_time: arr_time,
+                            arr_time: arr_time + (day * 24 * 60),
                             dep_stop: dep_stop,
                             arr_stop: arr_stop,
                         });
