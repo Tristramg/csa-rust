@@ -6,7 +6,7 @@ use self::chrono::prelude::*;
 use self::itertools::Itertools;
 
 pub struct Stop {
-    id: String,
+    pub id: String,
     name: String,
     parent_station: Option<String>,
     location_type: gtfs_structures::LocationType,
@@ -32,8 +32,8 @@ pub struct Connection {
 }
 
 pub struct Footpath {
-    to: usize,
-    duration: u16,
+    pub from: usize,
+    pub duration: u16,
 }
 
 pub struct Timetable {
@@ -107,7 +107,7 @@ impl TimetableBuilder {
                     }
                 })
                 .collect(),
-            footpaths: Vec::new(),
+            footpaths: self.stop_map.iter().map(|_| Vec::new()).collect(),
             transform_duration: 0,
         }
     }
@@ -234,7 +234,7 @@ impl Timetable {
 
                 result[index_a as usize].push(Footpath {
                     duration: 5,
-                    to: index_b,
+                    from: index_b,
                 });
             }
         }
@@ -263,8 +263,8 @@ mod tests {
         assert_eq!(5, timetable.stops.len());
         assert_eq!(2, timetable.connections.len());
         assert_eq!(5, timetable.footpaths.len());
-        assert_eq!(4, timetable.footpaths[2][0].to);
-        assert_eq!(2, timetable.footpaths[4][0].to);
+        assert_eq!(4, timetable.footpaths[2][0].from);
+        assert_eq!(2, timetable.footpaths[4][0].from);
     }
 
     #[test]
