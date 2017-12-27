@@ -170,6 +170,52 @@ mod tests {
     }
 
     #[test]
+    fn domination() {
+        let p = Profile {
+            out_connection: None,
+            dep_time: 10,
+            arr_time: 20,
+        };
+
+        assert!(p.dominates(&Profile {
+            out_connection: None,
+            dep_time: 9,
+            arr_time: 21,
+        }));
+        assert!(!p.dominates(&Profile {
+            out_connection: None,
+            dep_time: 9,
+            arr_time: 19,
+        }));
+        assert!(!p.dominates(&Profile {
+            out_connection: None,
+            dep_time: 11,
+            arr_time: 21,
+        }));
+    }
+
+    #[test]
+    fn non_domination() {
+        let p = Profile {
+            out_connection: None,
+            dep_time: 10,
+            arr_time: 20,
+        };
+
+        assert!(p.is_non_dominated(None));
+        assert!(p.is_non_dominated(Some(&Profile {
+            out_connection: None,
+            dep_time: 11,
+            arr_time: 21,
+        })));
+        assert!(!p.is_non_dominated(Some(&Profile {
+            out_connection: None,
+            dep_time: 11,
+            arr_time: 19,
+        })));
+    }
+
+    #[test]
     fn simple_transfer() {
         let mut b = Timetable::builder();
         b.trip()
