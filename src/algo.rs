@@ -38,9 +38,9 @@ fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option
     let transfer_duration = 5;
     profiles
         .iter()
-        .take_while(|p| p.dep_time > c.arr_time + transfer_duration)
-        .last()
-        .map(|p| {
+        .rposition(|p| p.dep_time > c.arr_time + transfer_duration)
+        .map(|pos| {
+            let p = &profiles[pos];
             if p.out_connection.is_some() {
                 p.arr_time
             } else {
