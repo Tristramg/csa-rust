@@ -6,7 +6,7 @@ use self::chrono::prelude::*;
 use self::itertools::Itertools;
 
 pub struct Stop {
-    id: String,
+    pub id: String,
     name: String,
     parent_station: Option<String>,
     location_type: gtfs_structures::LocationType,
@@ -23,17 +23,6 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     }
 }
 
-impl Stop {
-    pub fn new(id: &str) -> Self {
-        Self {
-            id: id.to_owned(),
-            name: id.to_owned(),
-            parent_station: None,
-            location_type: gtfs_structures::LocationType::StopPoint,
-        }
-    }
-}
-
 pub struct Connection {
     pub trip: usize,
     pub dep_time: u16,
@@ -43,8 +32,8 @@ pub struct Connection {
 }
 
 pub struct Footpath {
-    to: usize,
-    duration: u16,
+    pub from: usize,
+    pub duration: u16,
 }
 
 pub struct Timetable {
@@ -90,7 +79,7 @@ impl TimetableBuilder {
 
         if let Some(prev) = self.last_stop {
             self.connections.push(Connection {
-                trip: trip_id,
+                trip: trip_id - 1,
                 dep_stop: prev.0,
                 dep_time: prev.1,
                 arr_stop: stop_index,
@@ -102,7 +91,8 @@ impl TimetableBuilder {
 
         self
     }
-    pub fn build(self) -> Timetable {
+    pub fn build(mut self) -> Timetable {
+        self.connections.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
         Timetable {
             trips: self.trips,
             connections: self.connections,
@@ -117,7 +107,7 @@ impl TimetableBuilder {
                     }
                 })
                 .collect(),
-            footpaths: Vec::new(),
+            footpaths: self.stop_map.iter().map(|_| Vec::new()).collect(),
             transform_duration: 0,
         }
     }
@@ -202,7 +192,7 @@ impl Timetable {
                         result.push(Connection {
                             trip: trip_index,
                             dep_time: dep_time + (day * 24 * 60),
-                            arr_time: arr_time,
+                            arr_time: arr_time + (day * 24 * 60),
                             dep_stop: dep_stop,
                             arr_stop: arr_stop,
                         });
@@ -210,6 +200,9 @@ impl Timetable {
                 }
             }
         }
+
+        // We want the connections by decreasing departure time
+        result.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
         result
     }
 
@@ -241,7 +234,7 @@ impl Timetable {
 
                 result[index_a as usize].push(Footpath {
                     duration: 5,
-                    to: index_b,
+                    from: index_b,
                 });
             }
         }
@@ -270,8 +263,8 @@ mod tests {
         assert_eq!(5, timetable.stops.len());
         assert_eq!(2, timetable.connections.len());
         assert_eq!(5, timetable.footpaths.len());
-        assert_eq!(4, timetable.footpaths[2][0].to);
-        assert_eq!(2, timetable.footpaths[4][0].to);
+        assert_eq!(4, timetable.footpaths[2][0].from);
+        assert_eq!(2, timetable.footpaths[4][0].from);
     }
 
     #[test]

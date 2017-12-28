@@ -1,5 +1,6 @@
 mod structures;
 mod gtfs_structures;
+mod algo;
 #[macro_use]
 extern crate serde_derive;
 
@@ -11,6 +12,7 @@ fn main() {
             g.print_stats();
             let csa = structures::Timetable::from_gtfs(g, "2017-11-28", 10);
             csa.print_stats();
+            algo::compute(&csa, 1);
         }
         Err(e) => println!("Error: {:?}", e),
     }
