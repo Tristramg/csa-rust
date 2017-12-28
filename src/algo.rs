@@ -105,7 +105,10 @@ pub fn compute(timetable: &Timetable, destination: usize) -> Vec<Vec<Profile>> {
             };
 
             if profiles[c.dep_stop].incorporate(candidate) {
-                for footpath in &timetable.footpaths[c.dep_stop] {
+                for footpath in timetable.footpaths[c.dep_stop]
+                    .iter()
+                    .filter(|p| p.duration < c.dep_time)
+                {
                     profiles[footpath.from].incorporate(Profile {
                         out_connection: Some(conn_index),
                         dep_time: c.dep_time - footpath.duration,
