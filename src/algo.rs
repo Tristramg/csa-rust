@@ -59,7 +59,7 @@ impl Incorporate for Vec<Profile> {
         // The profiles are ordered in decreasing dep_time
         // The pivot is the element just before the candidate
         let pivot = self.iter().rposition(|p| p.dep_time >= candidate.dep_time);
-        let mut earlier_profiles: Vec<Profile> = match pivot {
+        let mut earlier_profiles = match pivot {
             None => Vec::new(),
             Some(position) => self.drain(position + 1..)
                 .filter(|p| candidate.dominates(p))
