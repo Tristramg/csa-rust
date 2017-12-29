@@ -44,6 +44,7 @@ pub struct Timetable {
     pub trips: Vec<Trip>,
 }
 
+#[derive(Clone)]
 pub struct Trip {}
 
 pub struct TimetableBuilder {
@@ -130,7 +131,7 @@ impl Timetable {
             .collect();
 
         let now = Utc::now();
-        let trips = gtfs.trips.iter().map(|_| Trip {}).collect();
+        let trips = vec![Trip {}; gtfs.trips.len() * horizon as usize];
         let connections = Timetable::connections(gtfs, start_date, horizon, &stop_indices);
         let transform_duration = Utc::now().signed_duration_since(now).num_milliseconds();
 
@@ -162,16 +163,15 @@ impl Timetable {
     ) -> Vec<Connection> {
         let mut result = Vec::new();
 
-        let trip_indices: HashMap<_, _> = gtfs.trips
-            .keys()
-            .enumerate()
-            .map(|(index, id)| (id, index))
-            .collect();
-
+        let mut trip_indices = HashMap::new();
+        let mut index = 0;
+        for trip_id in gtfs.trips.keys() {
+            for day in 0..horizon {
+                trip_indices.insert(format!("{}-{}", trip_id, day), index);
+                index += 1;
+            }
+        }
         for (trip_id, stop_times) in &(&gtfs.stop_times).into_iter().group_by(|elt| &elt.trip_id) {
-            let trip_index = *trip_indices
-                .get(trip_id)
-                .expect(&format!("Unknown trip id {}", trip_id));
             let gtfs_trip = gtfs.trips.get(trip_id).expect("Something went wrong");
 
             let days = gtfs.trip_days(&gtfs_trip.service_id, start_date);
@@ -190,7 +190,7 @@ impl Timetable {
                 for day in &days {
                     if *day < horizon {
                         result.push(Connection {
-                            trip: trip_index,
+                            trip: *trip_indices.get(&format!("{}-{}", trip_id, day)).unwrap(),
                             dep_time: dep_time + (day * 24 * 60),
                             arr_time: arr_time + (day * 24 * 60),
                             dep_stop: dep_stop,
