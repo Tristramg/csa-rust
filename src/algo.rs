@@ -78,11 +78,16 @@ impl Incorporate for Vec<Profile> {
 }
 
 // It returns all the possible routes, from all possible nodes to the given destination
-pub fn compute(timetable: &Timetable, destination: usize) -> Vec<Vec<Profile>> {
+pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
     let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
     let mut profiles: Vec<_> = timetable.stops.iter().map(|_| Vec::new()).collect();
-    profiles[destination].push(Default::default());
-    let final_footpaths = &timetable.footpaths[destination];
+    let mut final_footpaths = Vec::new();
+    for destination in destinations {
+        for fp in timetable.footpaths[*destination].clone() {
+            final_footpaths.push(fp);
+        }
+        profiles[*destination].push(Default::default());
+    }
 
     for (conn_index, c) in timetable.connections.iter().enumerate() {
         // Case 1: walking to target
@@ -229,7 +234,7 @@ mod tests {
             .s("c", "0:40");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(40, profiles[0][0].arr_time);
@@ -249,7 +254,7 @@ mod tests {
             .s("c", "0:30")
             .s("d", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 0);
+        let profiles = compute(&t, &[0]);
         assert!(profiles[2].is_empty());
     }
 
@@ -263,7 +268,7 @@ mod tests {
             .s("b", "0:20")
             .s("c", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert!(profiles[0].is_empty());
         assert!(!profiles[1].is_empty());
     }
@@ -285,7 +290,7 @@ mod tests {
             .s("c", "1:40");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(2, profiles[0].len());
         assert_eq!(10, profiles[0][1].dep_time);
         assert_eq!(40, profiles[0][1].arr_time);
@@ -307,7 +312,7 @@ mod tests {
             .s("c", "0:50");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(40, profiles[0][0].arr_time);
     }
@@ -317,7 +322,7 @@ mod tests {
         let mut b = Timetable::builder();
         b.trip().s("a", "0:10").s("b", "0:20").s("c", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(40, profiles[0][0].arr_time);
@@ -340,7 +345,7 @@ mod tests {
             from: 1,
             duration: 3,
         });
-        let profiles = compute(&t, 3);
+        let profiles = compute(&t, &[3]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(1, profiles[1].len());
@@ -361,7 +366,7 @@ mod tests {
             from: 1,
             duration: 3,
         });
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(23, profiles[0][0].arr_time);
     }
 }

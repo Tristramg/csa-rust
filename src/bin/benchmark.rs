@@ -17,29 +17,32 @@ fn main() {
     gtfs.print_stats();
     let timetable = structures::Timetable::from_gtfs(gtfs, "2017-11-28", 1);
     timetable.print_stats();
-    let to = timetable.stops
-                .iter()
-                .enumerate()
-                // RER A, Châtelet
-                .filter(|&(_, stop)| stop.id == "StopPoint:8775860:810:A")
-                .last()
-                .unwrap()
-                .0;
 
-    let runs = 9;
+    let runs = 5;
+    let chatelet_les_halles = "StopArea:8775860";
+    let gare_de_provins = "StopArea:8711616";
+    let gare_de_mantes = "StopArea:8738150";
+    let vignoles = "StopArea:59498";
+
+    let stop_areas = &[
+        chatelet_les_halles,
+        gare_de_mantes,
+        gare_de_provins,
+        vignoles,
+    ];
     let now = Utc::now();
     PROFILER.lock().unwrap().start("./bench.profile").unwrap();
-    for _ in 0..runs {
-        algo::compute(&timetable, to);
+    for sa in stop_areas {
+        for _ in 0..runs {
+            let to = timetable.stop_index_by_stop_area_id(sa);
+            algo::compute(&timetable, &to);
+        }
     }
-    let routes = algo::compute(&timetable, to);
     PROFILER.lock().unwrap().stop().unwrap();
 
     println!(
-        "Number of routes to {}: {}, computed in {} ms and {} runs",
-        to,
-        routes.iter().map(|p| p.len()).sum::<usize>(),
+        "Benchmark done. Computed in {} ms and {} runs",
         Utc::now().signed_duration_since(now).num_milliseconds(),
-        runs + 1
+        runs * stop_areas.len()
     );
 }

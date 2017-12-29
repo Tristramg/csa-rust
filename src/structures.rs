@@ -31,6 +31,7 @@ pub struct Connection {
     pub arr_stop: usize,
 }
 
+#[derive(Clone)]
 pub struct Footpath {
     pub from: usize,
     pub duration: u16,
@@ -249,6 +250,15 @@ impl Timetable {
             stop_map: HashMap::new(),
             trips: Vec::new(),
         }
+    }
+
+    pub fn stop_index_by_stop_area_id(&self, stop_area_id: &str) -> Vec<usize> {
+        self.stops
+            .iter()
+            .enumerate()
+            .filter(|&(_, stop)| stop.parent_station == Some(stop_area_id.to_string()))
+            .map(|(index, _)| index)
+            .collect()
     }
 }
 
