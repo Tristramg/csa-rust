@@ -20,20 +20,6 @@ impl Default for Profile {
     }
 }
 
-impl Profile {
-    fn dominates(&self, other: &Self) -> bool {
-        self.arr_time <= other.arr_time && self.dep_time >= other.dep_time
-    }
-
-    fn is_non_dominated(&self, other_opt: Option<&Self>) -> bool {
-        // By construction, we know self.dep_time <= other.dep_time
-        match other_opt {
-            Some(other) => self.arr_time <= other.arr_time,
-            None => true,
-        }
-    }
-}
-
 fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option<u16> {
     let transfer_duration = 5;
     profiles
@@ -52,28 +38,42 @@ fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option
 
 trait Incorporate {
     fn incorporate(&mut self, candidate: Profile) -> bool;
+    fn insert_and_filter(&mut self, candidate: Profile, pivot: usize);
 }
 
 impl Incorporate for Vec<Profile> {
+    fn insert_and_filter(&mut self, candidate: Profile, pivot: usize) {
+        // Remove all the dominated solutions
+        // We only consider profiles leaving earlier after the candidate
+        // As self is sorted by decreasing dep_time, we need only to look after the pivot
+        let mut i = pivot + 1;
+        while i < self.len() {
+            if candidate.arr_time <= self[i].arr_time {
+                self.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+        self.insert(pivot + 1, candidate);
+    }
+
     fn incorporate(&mut self, candidate: Profile) -> bool {
         // The profiles are ordered in decreasing dep_time
-        // The pivot is the element just before the candidate
-        let pivot = self.iter().rposition(|p| p.dep_time >= candidate.dep_time);
-        let mut earlier_profiles = match pivot {
-            None => Vec::new(),
-            Some(position) => self.drain(position + 1..)
-                .filter(|p| candidate.dominates(p))
-                .collect(),
-        };
-
-        let incorporated = candidate.is_non_dominated(self.last());
-        if incorporated {
-            self.push(candidate);
+        // The pivot is the element leaving just after the candidate
+        match self.iter().rposition(|p| p.dep_time >= candidate.dep_time) {
+            Some(pivot) => {
+                if candidate.arr_time < self[pivot].arr_time {
+                    self.insert_and_filter(candidate, pivot);
+                    true
+                } else {
+                    false
+                }
+            }
+            None => {
+                self.push(candidate);
+                true
+            }
         }
-
-        self.append(&mut earlier_profiles);
-
-        incorporated
     }
 }
 
@@ -175,52 +175,6 @@ mod tests {
         });
         assert_eq!(3, profiles.len());
         assert_eq!(11, profiles[1].dep_time);
-    }
-
-    #[test]
-    fn domination() {
-        let p = Profile {
-            out_connection: None,
-            dep_time: 10,
-            arr_time: 20,
-        };
-
-        assert!(p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 9,
-            arr_time: 21,
-        }));
-        assert!(!p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 9,
-            arr_time: 19,
-        }));
-        assert!(!p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 21,
-        }));
-    }
-
-    #[test]
-    fn non_domination() {
-        let p = Profile {
-            out_connection: None,
-            dep_time: 10,
-            arr_time: 20,
-        };
-
-        assert!(p.is_non_dominated(None));
-        assert!(p.is_non_dominated(Some(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 21,
-        })));
-        assert!(!p.is_non_dominated(Some(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 19,
-        })));
     }
 
     #[test]
