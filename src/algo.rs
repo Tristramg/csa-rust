@@ -1,4 +1,5 @@
 use structures::*;
+use std::collections::HashMap;
 
 // A profile defines a route
 // Given its connection, we can rebuild the whole route
@@ -81,20 +82,17 @@ impl Incorporate for Vec<Profile> {
 pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
     let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
     let mut profiles: Vec<_> = timetable.stops.iter().map(|_| Vec::new()).collect();
-    let mut final_footpaths = Vec::new();
+    let mut final_footpaths = HashMap::new();
     for destination in destinations {
-        for fp in timetable.footpaths[*destination].clone() {
-            final_footpaths.push(fp);
+        for fp in &timetable.footpaths[*destination] {
+            final_footpaths.insert(fp.from, fp.duration);
         }
         profiles[*destination].push(Default::default());
     }
 
     for (conn_index, c) in timetable.connections.iter().enumerate() {
         // Case 1: walking to target
-        let t1 = final_footpaths
-            .iter()
-            .find(|f| f.from == c.arr_stop)
-            .map(|f| c.arr_time + f.duration);
+        let t1 = final_footpaths.get(&c.arr_stop).map(|d| c.arr_time + d);
 
         // Case 2: Staying seated in the trip, we will reach the target at `t2`
         let t2 = arr_time_with_trip[c.trip];
