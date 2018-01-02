@@ -11,11 +11,27 @@ use chrono::prelude::*;
 use csa::*;
 use cpuprofiler::PROFILER;
 use itertools::Itertools;
+use structopt::StructOpt;
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "csa-benchmark", about = "Runs a benchmark and profiles the algorithm.")]
+struct Opt {
+    #[structopt(help = "The first day of the timetable")] first_day: String,
+
+    #[structopt(short = "h", long = "horizon", help = "How many days are loaded",
+                default_value = "1")]
+    horizon: u16,
+
+    #[structopt(short = "i", long = "input", help = "Folder where the GTFS files are",
+                default_value = ".")]
+    input: String,
+}
 
 fn main() {
-    let gtfs = gtfs_structures::Gtfs::new("./test_data/idf/").unwrap();
+    let opt = Opt::from_args();
+    let gtfs = gtfs_structures::Gtfs::new(&opt.input).unwrap();
     gtfs.print_stats();
-    let timetable = structures::Timetable::from_gtfs(gtfs, "2017-11-28", 1);
+    let timetable = structures::Timetable::from_gtfs(gtfs, &opt.first_day, opt.horizon);
     timetable.print_stats();
 
     let runs = 5;
