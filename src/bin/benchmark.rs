@@ -10,7 +10,6 @@ extern crate structopt_derive;
 use chrono::prelude::*;
 use csa::*;
 use cpuprofiler::PROFILER;
-use itertools::Itertools;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
