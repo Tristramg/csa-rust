@@ -129,7 +129,6 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
 
 mod tests {
     use super::*;
-    use structures::Timetable;
 
     #[test]
     fn test_incorporate() {
