@@ -77,6 +77,14 @@ impl Incorporate for Vec<Profile> {
     }
 }
 
+fn min_duration(a: Option<u16>, b: Option<u16>) -> Option<u16> {
+    match (a, b) {
+        (None, _) => b,
+        (_, None) => a,
+        (Some(a), Some(b)) => Some(a.min(b)),
+    }
+}
+
 // It returns all the possible routes, from all possible nodes to the given destination
 pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
     let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
