@@ -1,4 +1,5 @@
 use structures::*;
+use std::collections::HashMap;
 
 // A profile defines a route
 // Given its connection, we can rebuild the whole route
@@ -20,27 +21,13 @@ impl Default for Profile {
     }
 }
 
-impl Profile {
-    fn dominates(&self, other: &Self) -> bool {
-        self.arr_time <= other.arr_time && self.dep_time >= other.dep_time
-    }
-
-    fn is_non_dominated(&self, other_opt: Option<&Self>) -> bool {
-        // By construction, we know self.dep_time <= other.dep_time
-        match other_opt {
-            Some(other) => self.arr_time <= other.arr_time,
-            None => true,
-        }
-    }
-}
-
 fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option<u16> {
     let transfer_duration = 5;
     profiles
         .iter()
-        .take_while(|p| p.dep_time > c.arr_time + transfer_duration)
-        .last()
-        .map(|p| {
+        .rposition(|p| p.dep_time > c.arr_time + transfer_duration)
+        .map(|pos| {
+            let p = &profiles[pos];
             if p.out_connection.is_some() {
                 p.arr_time
             } else {
@@ -52,44 +39,60 @@ fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option
 
 trait Incorporate {
     fn incorporate(&mut self, candidate: Profile) -> bool;
+    fn insert_and_filter(&mut self, candidate: Profile, pivot: usize);
 }
 
 impl Incorporate for Vec<Profile> {
+    fn insert_and_filter(&mut self, candidate: Profile, pivot: usize) {
+        // Remove all the dominated solutions
+        // We only consider profiles leaving earlier after the candidate
+        // As self is sorted by decreasing dep_time, we need only to look after the pivot
+        let mut i = pivot + 1;
+        while i < self.len() {
+            if candidate.arr_time <= self[i].arr_time {
+                self.remove(i);
+            } else {
+                i += 1;
+            }
+        }
+        self.insert(pivot + 1, candidate);
+    }
+
     fn incorporate(&mut self, candidate: Profile) -> bool {
         // The profiles are ordered in decreasing dep_time
-        // The pivot is the element just before the candidate
-        let pivot = self.iter().rposition(|p| p.dep_time >= candidate.dep_time);
-        let mut earlier_profiles: Vec<Profile> = match pivot {
-            None => Vec::new(),
-            Some(position) => self.drain(position + 1..)
-                .filter(|p| candidate.dominates(p))
-                .collect(),
-        };
-
-        let incorporated = candidate.is_non_dominated(self.last());
-        if incorporated {
-            self.push(candidate);
+        // The pivot is the element leaving just after the candidate
+        match self.iter().rposition(|p| p.dep_time >= candidate.dep_time) {
+            Some(pivot) => {
+                if candidate.arr_time < self[pivot].arr_time {
+                    self.insert_and_filter(candidate, pivot);
+                    true
+                } else {
+                    false
+                }
+            }
+            None => {
+                self.push(candidate);
+                true
+            }
         }
-
-        self.append(&mut earlier_profiles);
-
-        incorporated
     }
 }
 
 // It returns all the possible routes, from all possible nodes to the given destination
-pub fn compute(timetable: &Timetable, destination: usize) -> Vec<Vec<Profile>> {
+pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
     let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
     let mut profiles: Vec<_> = timetable.stops.iter().map(|_| Vec::new()).collect();
-    profiles[destination].push(Default::default());
-    let final_footpaths = &timetable.footpaths[destination];
+    let mut final_footpaths = HashMap::new();
+    for destination in destinations {
+        for fp in &timetable.footpaths[*destination] {
+            final_footpaths.insert(fp.from, fp.duration);
+        }
+        profiles[*destination].push(Default::default());
+    }
 
     for (conn_index, c) in timetable.connections.iter().enumerate() {
         // Case 1: walking to target
-        let t1 = final_footpaths
-            .iter()
-            .find(|f| f.from == c.arr_stop)
-            .map(|f| c.arr_time + f.duration);
+        let t1 = final_footpaths.get(&c.arr_stop).map(|d| c.arr_time + d);
 
         // Case 2: Staying seated in the trip, we will reach the target at `t2`
         let t2 = arr_time_with_trip[c.trip];
@@ -105,7 +108,10 @@ pub fn compute(timetable: &Timetable, destination: usize) -> Vec<Vec<Profile>> {
             };
 
             if profiles[c.dep_stop].incorporate(candidate) {
-                for footpath in &timetable.footpaths[c.dep_stop] {
+                for footpath in timetable.footpaths[c.dep_stop]
+                    .iter()
+                    .filter(|p| p.duration < c.dep_time)
+                {
                     profiles[footpath.from].incorporate(Profile {
                         out_connection: Some(conn_index),
                         dep_time: c.dep_time - footpath.duration,
@@ -123,7 +129,6 @@ pub fn compute(timetable: &Timetable, destination: usize) -> Vec<Vec<Profile>> {
 
 mod tests {
     use super::*;
-    use structures::Timetable;
 
     #[test]
     fn test_incorporate() {
@@ -170,52 +175,6 @@ mod tests {
     }
 
     #[test]
-    fn domination() {
-        let p = Profile {
-            out_connection: None,
-            dep_time: 10,
-            arr_time: 20,
-        };
-
-        assert!(p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 9,
-            arr_time: 21,
-        }));
-        assert!(!p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 9,
-            arr_time: 19,
-        }));
-        assert!(!p.dominates(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 21,
-        }));
-    }
-
-    #[test]
-    fn non_domination() {
-        let p = Profile {
-            out_connection: None,
-            dep_time: 10,
-            arr_time: 20,
-        };
-
-        assert!(p.is_non_dominated(None));
-        assert!(p.is_non_dominated(Some(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 21,
-        })));
-        assert!(!p.is_non_dominated(Some(&Profile {
-            out_connection: None,
-            dep_time: 11,
-            arr_time: 19,
-        })));
-    }
-
-    #[test]
     fn simple_transfer() {
         let mut b = Timetable::builder();
         b.trip()
@@ -226,7 +185,7 @@ mod tests {
             .s("c", "0:40");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(40, profiles[0][0].arr_time);
@@ -246,7 +205,7 @@ mod tests {
             .s("c", "0:30")
             .s("d", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 0);
+        let profiles = compute(&t, &[0]);
         assert!(profiles[2].is_empty());
     }
 
@@ -260,7 +219,7 @@ mod tests {
             .s("b", "0:20")
             .s("c", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert!(profiles[0].is_empty());
         assert!(!profiles[1].is_empty());
     }
@@ -282,7 +241,7 @@ mod tests {
             .s("c", "1:40");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(2, profiles[0].len());
         assert_eq!(10, profiles[0][1].dep_time);
         assert_eq!(40, profiles[0][1].arr_time);
@@ -304,7 +263,7 @@ mod tests {
             .s("c", "0:50");
 
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(40, profiles[0][0].arr_time);
     }
@@ -314,7 +273,7 @@ mod tests {
         let mut b = Timetable::builder();
         b.trip().s("a", "0:10").s("b", "0:20").s("c", "0:40");
         let t = b.build();
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(40, profiles[0][0].arr_time);
@@ -337,7 +296,7 @@ mod tests {
             from: 1,
             duration: 3,
         });
-        let profiles = compute(&t, 3);
+        let profiles = compute(&t, &[3]);
         assert_eq!(1, profiles[0].len());
         assert_eq!(10, profiles[0][0].dep_time);
         assert_eq!(1, profiles[1].len());
@@ -358,7 +317,7 @@ mod tests {
             from: 1,
             duration: 3,
         });
-        let profiles = compute(&t, 2);
+        let profiles = compute(&t, &[2]);
         assert_eq!(23, profiles[0][0].arr_time);
     }
 }
