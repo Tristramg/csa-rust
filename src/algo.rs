@@ -92,7 +92,7 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
     let mut final_footpaths: Vec<Option<u16>> = timetable.stops.iter().map(|_| None).collect();
     for destination in destinations {
         for fp in &timetable.footpaths[*destination] {
-            final_footpaths[fp.from] = Some(fp.duration);
+            final_footpaths[fp.from] = min_duration(final_footpaths[fp.from], Some(fp.duration));
         }
         profiles[*destination].push(Default::default());
     }
@@ -325,6 +325,28 @@ mod tests {
             duration: 3,
         });
         let profiles = compute(&t, &[2]);
+        assert_eq!(23, profiles[0][0].arr_time);
+    }
+
+    #[test]
+    fn final_multiple_footpath() {
+        let mut b = Timetable::builder();
+        b.trip()
+            .s("a", "0:10")
+            .s("b", "0:20")
+            .trip()
+            .s("c", "0:30")
+            .s("d", "0:40");
+        let mut t = b.build();
+        t.footpaths[2].push(Footpath {
+            from: 1,
+            duration: 3,
+        });
+        t.footpaths[3].push(Footpath {
+            from: 1,
+            duration: 10,
+        });
+        let profiles = compute(&t, &[2, 3]);
         assert_eq!(23, profiles[0][0].arr_time);
     }
 }
