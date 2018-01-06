@@ -107,7 +107,7 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
         // Case 3: Transfering in the same stop, we look up the earliest compatible arrival
         let t3 = arrival_time_with_stop_change(&profiles[c.arr_stop], c);
 
-        if let Some(t) = [t1, t2, t3].iter().filter_map(|t| *t).min() {
+        if let Some(t) = min_duration(t1, min_duration(t2, t3)) {
             let candidate = Profile {
                 out_connection: Some(conn_index),
                 dep_time: c.dep_time,
