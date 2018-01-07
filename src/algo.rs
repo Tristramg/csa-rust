@@ -87,9 +87,9 @@ fn min_duration(a: Option<u16>, b: Option<u16>) -> Option<u16> {
 
 // It returns all the possible routes, from all possible nodes to the given destination
 pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
-    let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
+    let mut arr_time_with_trip = vec![None; timetable.trips.len()];
     let mut profiles: Vec<_> = timetable.stops.iter().map(|_| Vec::new()).collect();
-    let mut final_footpaths: Vec<Option<u16>> = timetable.stops.iter().map(|_| None).collect();
+    let mut final_footpaths = vec![None; timetable.stops.len()];
     for destination in destinations {
         for fp in &timetable.footpaths[*destination] {
             final_footpaths[fp.from] = min_duration(final_footpaths[fp.from], Some(fp.duration));
