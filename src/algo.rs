@@ -10,6 +10,29 @@ pub struct Profile {
     pub arr_time: u16,
 }
 
+impl Profile {
+    pub fn route<'a>(
+        &self,
+        profiles: &[Vec<Profile>],
+        timetable: &'a Timetable,
+    ) -> Vec<&'a Connection> {
+        let mut current_connection = self.out_connection;
+        let mut result = Vec::new();
+
+        while let Some(c_index) = current_connection {
+            let conn = &timetable.connections[c_index];
+
+            current_connection = profiles[conn.arr_stop]
+                .iter()
+                .find(|profile| self.arr_time == profile.arr_time)
+                .and_then(|profile| profile.out_connection);
+
+            result.push(conn);
+        }
+        result
+    }
+}
+
 impl Default for Profile {
     fn default() -> Self {
         Self {
@@ -348,5 +371,25 @@ mod tests {
         });
         let profiles = compute(&t, &[2, 3]);
         assert_eq!(23, profiles[0][0].arr_time);
+    }
+
+    #[test]
+    fn build_route() {
+        let mut b = Timetable::builder();
+        b.trip()
+            .s("a", "0:10")
+            .s("b", "0:20")
+            .trip()
+            .s("b", "0:30")
+            .s("c", "0:40");
+        let t = b.build();
+        let profiles = compute(&t, &[2]);
+        assert_eq!(1, profiles[0].len());
+        let route = profiles[0][0].route(&profiles, &t);
+        assert_eq!(2, route.len());
+        assert_eq!(0, route[0].dep_stop);
+        assert_eq!(10, route[0].dep_time);
+        assert_eq!(2, route[1].arr_stop);
+        assert_eq!(40, route[1].arr_time);
     }
 }
