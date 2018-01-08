@@ -1,5 +1,4 @@
 use structures::*;
-use std::collections::HashMap;
 
 // A profile defines a route
 // Given its connection, we can rebuild the whole route
@@ -78,21 +77,29 @@ impl Incorporate for Vec<Profile> {
     }
 }
 
+fn min_duration(a: Option<u16>, b: Option<u16>) -> Option<u16> {
+    match (a, b) {
+        (None, _) => b,
+        (_, None) => a,
+        (Some(a), Some(b)) => Some(a.min(b)),
+    }
+}
+
 // It returns all the possible routes, from all possible nodes to the given destination
 pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile>> {
-    let mut arr_time_with_trip: Vec<_> = timetable.trips.iter().map(|_| None).collect();
+    let mut arr_time_with_trip = vec![None; timetable.trips.len()];
     let mut profiles: Vec<_> = timetable.stops.iter().map(|_| Vec::new()).collect();
-    let mut final_footpaths = HashMap::new();
+    let mut final_footpaths = vec![None; timetable.stops.len()];
     for destination in destinations {
         for fp in &timetable.footpaths[*destination] {
-            final_footpaths.insert(fp.from, fp.duration);
+            final_footpaths[fp.from] = min_duration(final_footpaths[fp.from], Some(fp.duration));
         }
         profiles[*destination].push(Default::default());
     }
 
     for (conn_index, c) in timetable.connections.iter().enumerate() {
         // Case 1: walking to target
-        let t1 = final_footpaths.get(&c.arr_stop).map(|d| c.arr_time + d);
+        let t1 = final_footpaths[c.arr_stop].map(|d| c.arr_time + d);
 
         // Case 2: Staying seated in the trip, we will reach the target at `t2`
         let t2 = arr_time_with_trip[c.trip];
@@ -100,7 +107,7 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
         // Case 3: Transfering in the same stop, we look up the earliest compatible arrival
         let t3 = arrival_time_with_stop_change(&profiles[c.arr_stop], c);
 
-        if let Some(t) = [t1, t2, t3].iter().filter_map(|t| *t).min() {
+        if let Some(t) = min_duration(t1, min_duration(t2, t3)) {
             let candidate = Profile {
                 out_connection: Some(conn_index),
                 dep_time: c.dep_time,
@@ -318,6 +325,28 @@ mod tests {
             duration: 3,
         });
         let profiles = compute(&t, &[2]);
+        assert_eq!(23, profiles[0][0].arr_time);
+    }
+
+    #[test]
+    fn final_multiple_footpath() {
+        let mut b = Timetable::builder();
+        b.trip()
+            .s("a", "0:10")
+            .s("b", "0:20")
+            .trip()
+            .s("c", "0:30")
+            .s("d", "0:40");
+        let mut t = b.build();
+        t.footpaths[2].push(Footpath {
+            from: 1,
+            duration: 3,
+        });
+        t.footpaths[3].push(Footpath {
+            from: 1,
+            duration: 10,
+        });
+        let profiles = compute(&t, &[2, 3]);
         assert_eq!(23, profiles[0][0].arr_time);
     }
 }
