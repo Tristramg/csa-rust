@@ -23,6 +23,7 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Connection {
     pub trip: usize,
     pub dep_time: u16,
