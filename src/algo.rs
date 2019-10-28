@@ -158,8 +158,6 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
 }
 
 mod tests {
-    use super::*;
-
     #[test]
     fn test_incorporate() {
         let mut profiles = Vec::new();

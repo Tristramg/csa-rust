@@ -4,12 +4,12 @@ extern crate failure;
 extern crate regex;
 extern crate serde;
 
-use std::fs::File;
-use std::collections::{HashMap, HashSet};
 use self::chrono::prelude::*;
-use self::serde::de::{self, Deserialize, Deserializer};
 use self::chrono::Duration;
 use self::failure::Error;
+use self::serde::de::{self, Deserialize, Deserializer};
+use std::collections::{HashMap, HashSet};
+use std::fs::File;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum LocationType {
@@ -20,16 +20,26 @@ pub enum LocationType {
 
 #[derive(Debug, Deserialize)]
 pub struct Calendar {
-    #[serde(rename = "service_id")] id: String,
-    #[serde(deserialize_with = "deserialize_bool")] monday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] tuesday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] wednesday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] thursday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] friday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] saturday: bool,
-    #[serde(deserialize_with = "deserialize_bool")] sunday: bool,
-    #[serde(deserialize_with = "deserialize_date")] pub start_date: NaiveDate,
-    #[serde(deserialize_with = "deserialize_date")] pub end_date: NaiveDate,
+    #[serde(rename = "service_id")]
+    id: String,
+    #[serde(deserialize_with = "deserialize_bool")]
+    monday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    tuesday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    wednesday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    thursday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    friday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    saturday: bool,
+    #[serde(deserialize_with = "deserialize_bool")]
+    sunday: bool,
+    #[serde(deserialize_with = "deserialize_date")]
+    pub start_date: NaiveDate,
+    #[serde(deserialize_with = "deserialize_date")]
+    pub end_date: NaiveDate,
 }
 
 impl Calendar {
@@ -49,23 +59,28 @@ impl Calendar {
 #[derive(Debug, Deserialize)]
 pub struct CalendarDate {
     service_id: String,
-    #[serde(deserialize_with = "deserialize_date")] date: NaiveDate,
+    #[serde(deserialize_with = "deserialize_date")]
+    date: NaiveDate,
     exception_type: u8,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Stop {
-    #[serde(rename = "stop_id")] pub id: String,
+    #[serde(rename = "stop_id")]
+    pub id: String,
     pub stop_name: String,
-    #[serde(deserialize_with = "deserialize_location_type")] pub location_type: LocationType,
+    #[serde(deserialize_with = "deserialize_location_type")]
+    pub location_type: LocationType,
     pub parent_station: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct StopTime {
     pub trip_id: String,
-    #[serde(deserialize_with = "deserialize_time")] pub arrival_time: u16,
-    #[serde(deserialize_with = "deserialize_time")] pub departure_time: u16,
+    #[serde(deserialize_with = "deserialize_time")]
+    pub arrival_time: u16,
+    #[serde(deserialize_with = "deserialize_time")]
+    pub departure_time: u16,
     pub stop_id: String,
     stop_sequence: u32,
     pickup_type: Option<u8>,
@@ -74,7 +89,8 @@ pub struct StopTime {
 
 #[derive(Debug, Deserialize)]
 pub struct Route {
-    #[serde(rename = "route_id")] id: String,
+    #[serde(rename = "route_id")]
+    id: String,
     route_short_name: String,
     route_long_name: String,
     route_type: u8,
@@ -82,7 +98,8 @@ pub struct Route {
 
 #[derive(Debug, Deserialize)]
 pub struct Trip {
-    #[serde(rename = "trip_id")] pub id: String,
+    #[serde(rename = "trip_id")]
+    pub id: String,
     pub service_id: String,
     pub route_id: String,
 }
@@ -218,7 +235,8 @@ impl Gtfs {
 
         // Handle services given by specific days and exceptions
         let mut removed_days = HashSet::new();
-        for extra_day in self.calendar_dates
+        for extra_day in self
+            .calendar_dates
             .get(service_id)
             .iter()
             .flat_map(|e| e.iter())
@@ -241,7 +259,8 @@ impl Gtfs {
             for days_offset in 0..total_days + 1 {
                 let current_date = start_date + Duration::days(days_offset);
 
-                if calendar.start_date <= current_date && calendar.end_date >= current_date
+                if calendar.start_date <= current_date
+                    && calendar.end_date >= current_date
                     && calendar.valid_weekday(current_date)
                     && !removed_days.contains(&days_offset)
                 {

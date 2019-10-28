@@ -1,9 +1,9 @@
 extern crate chrono;
 extern crate itertools;
-use gtfs_structures;
-use std::collections::HashMap;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
+use gtfs_structures;
+use std::collections::HashMap;
 
 pub struct Stop {
     pub id: String,
@@ -99,15 +99,14 @@ impl TimetableBuilder {
         Timetable {
             trips: self.trips,
             connections: self.connections,
-            stops: self.stop_map
+            stops: self
+                .stop_map
                 .iter()
-                .map(|(id, _)| {
-                    Stop {
-                        id: id.to_owned(),
-                        name: id.to_owned(),
-                        location_type: gtfs_structures::LocationType::StopPoint,
-                        parent_station: None,
-                    }
+                .map(|(id, _)| Stop {
+                    id: id.to_owned(),
+                    name: id.to_owned(),
+                    location_type: gtfs_structures::LocationType::StopPoint,
+                    parent_station: None,
                 })
                 .collect(),
             footpaths: self.stop_map.iter().map(|_| Vec::new()).collect(),
@@ -115,8 +114,6 @@ impl TimetableBuilder {
         }
     }
 }
-
-
 
 impl Timetable {
     pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {

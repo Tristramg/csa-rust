@@ -4,25 +4,36 @@ extern crate chrono;
 extern crate cpuprofiler;
 extern crate itertools;
 extern crate structopt;
-#[macro_use]
 extern crate structopt_derive;
 
 use chrono::prelude::*;
-use csa::*;
 use cpuprofiler::PROFILER;
+use csa::*;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "csa-benchmark", about = "Runs a benchmark and profiles the algorithm.")]
+#[structopt(
+    name = "csa-benchmark",
+    about = "Runs a benchmark and profiles the algorithm."
+)]
 struct Opt {
-    #[structopt(help = "The first day of the timetable")] first_day: String,
+    #[structopt(help = "The first day of the timetable")]
+    first_day: String,
 
-    #[structopt(short = "h", long = "horizon", help = "How many days are loaded",
-                default_value = "1")]
+    #[structopt(
+        short = "h",
+        long = "horizon",
+        help = "How many days are loaded",
+        default_value = "1"
+    )]
     horizon: u16,
 
-    #[structopt(short = "i", long = "input", help = "Folder where the GTFS files are",
-                default_value = ".")]
+    #[structopt(
+        short = "i",
+        long = "input",
+        help = "Folder where the GTFS files are",
+        default_value = "."
+    )]
     input: String,
 }
 
