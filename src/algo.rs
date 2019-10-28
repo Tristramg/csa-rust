@@ -1,4 +1,4 @@
-use structures::*;
+use crate::structures::*;
 
 // A profile defines a route
 // Given its connection, we can rebuild the whole route

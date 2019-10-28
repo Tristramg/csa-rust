@@ -2,7 +2,7 @@ extern crate chrono;
 extern crate itertools;
 use self::chrono::prelude::*;
 use self::itertools::Itertools;
-use gtfs_structures;
+use crate::gtfs_structures;
 use std::collections::HashMap;
 
 pub struct Stop {
