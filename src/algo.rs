@@ -1,4 +1,4 @@
-use crate::structures::*;
+use crate::structures::{Connection, Timetable};
 
 // A profile defines a route
 // Given its connection, we can rebuild the whole route
@@ -158,6 +158,8 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
 }
 
 mod tests {
+    use super::*;
+    use crate::structures::Footpath;
     #[test]
     fn test_incorporate() {
         let mut profiles = Vec::new();

@@ -57,7 +57,7 @@ pub struct TimetableBuilder {
 }
 
 impl TimetableBuilder {
-    pub fn trip<'a>(&'a mut self) -> &'a mut Self {
+    pub fn trip(&mut self) -> &mut Self {
         self.last_stop = None;
         self.trips.push(Trip {});
         self
@@ -78,7 +78,7 @@ impl TimetableBuilder {
         }
         let stop_index = self.stop(stop);
         let parsed_time = gtfs_structures::parse_time(time.to_owned())
-            .expect(&format!("Invalid time format {}", time));
+            .unwrap_or_else(|_| panic!("Invalid time format {}", time));
 
         if let Some(prev) = self.last_stop {
             self.connections.push(Connection {
@@ -136,10 +136,10 @@ impl Timetable {
 
         Timetable {
             footpaths: Timetable::footpaths(&stops, &stop_indices),
-            stops: stops,
-            connections: connections,
-            transform_duration: transform_duration,
-            trips: trips,
+            stops,
+            connections,
+            transform_duration,
+            trips,
         }
     }
 
@@ -170,7 +170,7 @@ impl Timetable {
                 index += 1;
             }
         }
-        for (trip_id, stop_times) in &(&gtfs.stop_times).into_iter().group_by(|elt| &elt.trip_id) {
+        for (trip_id, stop_times) in &(&gtfs.stop_times).iter().group_by(|elt| &elt.trip_id) {
             let gtfs_trip = gtfs.trips.get(trip_id).expect("Something went wrong");
 
             let days = gtfs.trip_days(&gtfs_trip.service_id, start_date);
@@ -180,11 +180,11 @@ impl Timetable {
                 let arr_time = arrival.arrival_time;
                 let dep_stop = *stop_indices
                     .get(&departure.stop_id)
-                    .expect(&format!("Unknown stop id {}", departure.stop_id));
+                    .unwrap_or_else(|| panic!("Unknown stop id {}", departure.stop_id));
 
                 let arr_stop = *stop_indices
                     .get(&arrival.stop_id)
-                    .expect(&format!("Unknown stop id {}", arrival.stop_id));
+                    .unwrap_or_else(|| panic!("Unknown stop id {}", arrival.stop_id));
 
                 for day in &days {
                     if *day < horizon {
@@ -192,8 +192,8 @@ impl Timetable {
                             trip: *trip_indices.get(&format!("{}-{}", trip_id, day)).unwrap(),
                             dep_time: dep_time + (day * 24 * 60),
                             arr_time: arr_time + (day * 24 * 60),
-                            dep_stop: dep_stop,
-                            arr_stop: arr_stop,
+                            dep_stop,
+                            arr_stop,
                         });
                     }
                 }
@@ -205,14 +205,14 @@ impl Timetable {
         result
     }
 
-    fn footpaths(stops: &Vec<Stop>, stop_indices: &HashMap<String, usize>) -> Vec<Vec<Footpath>> {
+    fn footpaths(stops: &[Stop], stop_indices: &HashMap<String, usize>) -> Vec<Vec<Footpath>> {
         let mut result: Vec<Vec<_>> = stops.iter().map(|_| Vec::new()).collect();
         let mut stop_areas = HashMap::new();
 
         for stop in stops {
             if let Some(ref parent) = stop.parent_station {
                 if stop.location_type == gtfs_structures::LocationType::StopPoint {
-                    let children = stop_areas.entry(parent).or_insert(Vec::new());
+                    let children = stop_areas.entry(parent).or_insert_with(Vec::new);
                     children.push(stop.id.to_owned())
                 }
             }
@@ -226,10 +226,10 @@ impl Timetable {
             {
                 let index_a = *stop_indices
                     .get(child_a)
-                    .expect(&format!("Missing child station {}", child_a));
+                    .unwrap_or_else(|| panic!("Missing child station {}", child_b));
                 let index_b = *stop_indices
                     .get(child_b)
-                    .expect(&format!("Missing child station {}", child_b));
+                    .unwrap_or_else(|| panic!("Missing child station {}", child_b));
 
                 result[index_a as usize].push(Footpath {
                     duration: 5,
