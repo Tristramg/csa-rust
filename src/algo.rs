@@ -6,8 +6,8 @@ use crate::structures::{Connection, Timetable};
 pub struct Profile {
     // If None, it means that it is the starting point
     pub out_connection: Option<usize>,
-    pub dep_time: u16,
-    pub arr_time: u16,
+    pub dep_time: u32,
+    pub arr_time: u32,
 }
 
 impl Profile {
@@ -37,13 +37,13 @@ impl Default for Profile {
     fn default() -> Self {
         Self {
             out_connection: None,
-            dep_time: u16::max_value(),
+            dep_time: u32::max_value(),
             arr_time: 0,
         }
     }
 }
 
-fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option<u16> {
+fn arrival_time_with_stop_change(profiles: &[Profile], c: &Connection) -> Option<u32> {
     let transfer_duration = 5;
     profiles
         .iter()
@@ -100,7 +100,7 @@ impl Incorporate for Vec<Profile> {
     }
 }
 
-fn min_duration(a: Option<u16>, b: Option<u16>) -> Option<u16> {
+fn min_duration(a: Option<u32>, b: Option<u32>) -> Option<u32> {
     match (a, b) {
         (None, _) => b,
         (_, None) => a,

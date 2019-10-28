@@ -1,10 +1,8 @@
-extern crate chrono;
-extern crate itertools;
-use self::chrono::prelude::*;
-use self::itertools::Itertools;
-use crate::gtfs_structures;
+use chrono::prelude::{NaiveDate, Utc};
+use itertools::Itertools;
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Stop {
     pub id: String,
     name: String,
@@ -12,11 +10,11 @@ pub struct Stop {
     location_type: gtfs_structures::LocationType,
 }
 
-impl<'a> From<&'a gtfs_structures::Stop> for Stop {
-    fn from(stop: &gtfs_structures::Stop) -> Self {
+impl<'a> From<&'a std::sync::Arc<gtfs_structures::Stop>> for Stop {
+    fn from(stop: &std::sync::Arc<gtfs_structures::Stop>) -> Self {
         Self {
             id: stop.id.to_owned(),
-            name: stop.stop_name.to_owned(),
+            name: stop.name.to_owned(),
             parent_station: stop.parent_station.to_owned(),
             location_type: stop.location_type,
         }
@@ -26,16 +24,16 @@ impl<'a> From<&'a gtfs_structures::Stop> for Stop {
 #[derive(Clone, Debug)]
 pub struct Connection {
     pub trip: usize,
-    pub dep_time: u16,
-    pub arr_time: u16,
+    pub dep_time: u32,
+    pub arr_time: u32,
     pub dep_stop: usize,
     pub arr_stop: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Footpath {
     pub from: usize,
-    pub duration: u16,
+    pub duration: u32,
 }
 
 pub struct Timetable {
@@ -52,7 +50,7 @@ pub struct Trip {}
 pub struct TimetableBuilder {
     stop_map: HashMap<String, usize>,
     trips: Vec<Trip>,
-    last_stop: Option<(usize, u16)>,
+    last_stop: Option<(usize, u32)>,
     connections: Vec<Connection>,
 }
 
@@ -65,10 +63,7 @@ impl TimetableBuilder {
 
     fn stop(&mut self, stop_id: &str) -> usize {
         let index = self.stop_map.len();
-        self.stop_map
-            .entry(stop_id.to_owned())
-            .or_insert(index)
-            .clone()
+        *self.stop_map.entry(stop_id.to_owned()).or_insert(index)
     }
 
     pub fn s<'a>(&'a mut self, stop: &str, time: &str) -> &'a mut Self {
@@ -77,7 +72,7 @@ impl TimetableBuilder {
             panic!("Timetable builder: trying to add a stop without a trip");
         }
         let stop_index = self.stop(stop);
-        let parsed_time = gtfs_structures::parse_time(time.to_owned())
+        let parsed_time = gtfs_structures::parse_time(&format!("0:{}", time))
             .unwrap_or_else(|_| panic!("Invalid time format {}", time));
 
         if let Some(prev) = self.last_stop {
@@ -121,7 +116,7 @@ impl Timetable {
             .parse::<NaiveDate>()
             .expect("Could not parse start date");
 
-        let stops: Vec<_> = gtfs.stops.iter().map(Stop::from).collect();
+        let stops: Vec<_> = gtfs.stops.values().map(Stop::from).collect();
 
         let stop_indices = stops
             .iter()
@@ -170,28 +165,27 @@ impl Timetable {
                 index += 1;
             }
         }
-        for (trip_id, stop_times) in &(&gtfs.stop_times).iter().group_by(|elt| &elt.trip_id) {
-            let gtfs_trip = gtfs.trips.get(trip_id).expect("Something went wrong");
 
+        for (trip_id, gtfs_trip) in &gtfs.trips {
             let days = gtfs.trip_days(&gtfs_trip.service_id, start_date);
 
-            for (departure, arrival) in stop_times.tuple_windows() {
+            for (departure, arrival) in gtfs_trip.stop_times.iter().tuple_windows() {
                 let dep_time = departure.departure_time;
                 let arr_time = arrival.arrival_time;
                 let dep_stop = *stop_indices
-                    .get(&departure.stop_id)
-                    .unwrap_or_else(|| panic!("Unknown stop id {}", departure.stop_id));
+                    .get(&departure.stop.id)
+                    .unwrap_or_else(|| panic!("Unknown stop id {}", departure.stop.id));
 
                 let arr_stop = *stop_indices
-                    .get(&arrival.stop_id)
-                    .unwrap_or_else(|| panic!("Unknown stop id {}", arrival.stop_id));
+                    .get(&arrival.stop.id)
+                    .unwrap_or_else(|| panic!("Unknown stop id {}", arrival.stop.id));
 
                 for day in &days {
                     if *day < horizon {
                         result.push(Connection {
                             trip: *trip_indices.get(&format!("{}-{}", trip_id, day)).unwrap(),
-                            dep_time: dep_time + (day * 24 * 60),
-                            arr_time: arr_time + (day * 24 * 60),
+                            dep_time: dep_time + (u32::from(*day) * 24 * 60 * 60),
+                            arr_time: arr_time + (u32::from(*day) * 24 * 60 * 60),
                             dep_stop,
                             arr_stop,
                         });
@@ -237,7 +231,6 @@ impl Timetable {
                 });
             }
         }
-
         result
     }
 
@@ -271,8 +264,13 @@ mod tests {
         assert_eq!(5, timetable.stops.len());
         assert_eq!(2, timetable.connections.len());
         assert_eq!(5, timetable.footpaths.len());
-        assert_eq!(4, timetable.footpaths[2][0].from);
-        assert_eq!(2, timetable.footpaths[4][0].from);
+        for i in 0..timetable.stops.len() {
+            if timetable.stops[i].id == "stop3" || timetable.stops[i].id == "stop5" {
+                assert_eq!(timetable.footpaths[i].len(), 1);
+            } else {
+                assert!(timetable.footpaths[i].is_empty());
+            }
+        }
     }
 
     #[test]

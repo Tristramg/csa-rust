@@ -1,11 +1,3 @@
-extern crate csa;
-
-extern crate chrono;
-extern crate cpuprofiler;
-extern crate itertools;
-extern crate structopt;
-extern crate structopt_derive;
-
 use chrono::prelude::*;
 use cpuprofiler::PROFILER;
 use csa::*;
