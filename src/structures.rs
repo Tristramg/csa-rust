@@ -176,10 +176,17 @@ impl Timetable {
 
         for (trip_id, gtfs_trip) in &gtfs.trips {
             let days = gtfs.trip_days(&gtfs_trip.service_id, start_date);
+            let mut last_arrival = None;
 
             for (departure, arrival) in gtfs_trip.stop_times.iter().tuple_windows() {
-                let dep_time = departure.departure_time;
-                let arr_time = arrival.arrival_time;
+                let dep_time = departure.departure_time.unwrap_or_else(|| {
+                    last_arrival.unwrap_or_else(|| {
+                        panic!("First departure without time on trip {}", trip_id)
+                    })
+                });
+
+                let arr_time = arrival.arrival_time.unwrap_or_else(|| dep_time);
+                last_arrival = Some(arr_time);
                 let dep_stop = *stop_indices
                     .get(&departure.stop.id)
                     .unwrap_or_else(|| panic!("Unknown stop id {}", departure.stop.id));

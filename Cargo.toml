@@ -6,7 +6,7 @@ edition = '2018'
 
 [dependencies]
 actix-web = "1.0"
-gtfs-structures = "0.14"
+gtfs-structures = "0.21.0"
 chrono = {version = "0.4", features = ["serde"]}
 itertools = "0.8"
 cpuprofiler = "0.0.3"
