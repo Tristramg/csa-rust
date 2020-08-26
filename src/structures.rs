@@ -1,13 +1,14 @@
 use chrono::prelude::{NaiveDate, Utc};
 use itertools::Itertools;
+use serde::Serialize;
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Stop {
     pub id: String,
-    name: String,
-    parent_station: Option<String>,
-    location_type: gtfs_structures::LocationType,
+    pub name: String,
+    pub parent_station: Option<String>,
+    pub location_type: gtfs_structures::LocationType,
 }
 
 impl<'a> From<&'a std::sync::Arc<gtfs_structures::Stop>> for Stop {
@@ -21,7 +22,7 @@ impl<'a> From<&'a std::sync::Arc<gtfs_structures::Stop>> for Stop {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Connection {
     pub trip: usize,
     pub dep_time: u32,
@@ -37,6 +38,7 @@ pub struct Footpath {
 }
 
 pub struct Timetable {
+    pub start_date: chrono::NaiveDate,
     pub transform_duration: i64,
     pub stops: Vec<Stop>,
     pub connections: Vec<Connection>,
@@ -92,6 +94,7 @@ impl TimetableBuilder {
     pub fn build(mut self) -> Timetable {
         self.connections.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
         Timetable {
+            start_date: NaiveDate::from_yo(2019, 42),
             trips: self.trips,
             connections: self.connections,
             stops: self
@@ -111,7 +114,11 @@ impl TimetableBuilder {
 }
 
 impl Timetable {
-    pub fn from_gtfs(gtfs: gtfs_structures::Gtfs, start_date_str: &str, horizon: u16) -> Timetable {
+    pub fn from_gtfs(
+        gtfs: &gtfs_structures::Gtfs,
+        start_date_str: &str,
+        horizon: u16,
+    ) -> Timetable {
         let start_date = start_date_str
             .parse::<NaiveDate>()
             .expect("Could not parse start date");
@@ -126,10 +133,11 @@ impl Timetable {
 
         let now = Utc::now();
         let trips = vec![Trip {}; gtfs.trips.len() * horizon as usize];
-        let connections = Timetable::connections(gtfs, start_date, horizon, &stop_indices);
+        let connections = Timetable::connections(&gtfs, start_date, horizon, &stop_indices);
         let transform_duration = Utc::now().signed_duration_since(now).num_milliseconds();
 
         Timetable {
+            start_date,
             footpaths: Timetable::footpaths(&stops, &stop_indices),
             stops,
             connections,
@@ -150,7 +158,7 @@ impl Timetable {
     }
 
     fn connections(
-        gtfs: gtfs_structures::Gtfs,
+        gtfs: &gtfs_structures::Gtfs,
         start_date: NaiveDate,
         horizon: u16,
         stop_indices: &HashMap<String, usize>,
@@ -260,7 +268,7 @@ mod tests {
     #[test]
     fn from_gtfs() {
         let gtfs = gtfs_structures::Gtfs::new("fixtures/").unwrap();
-        let timetable = Timetable::from_gtfs(gtfs, "2017-1-1", 10);
+        let timetable = Timetable::from_gtfs(&gtfs, "2017-1-1", 10);
         assert_eq!(5, timetable.stops.len());
         assert_eq!(2, timetable.connections.len());
         assert_eq!(5, timetable.footpaths.len());

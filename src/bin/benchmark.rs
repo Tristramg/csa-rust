@@ -33,7 +33,7 @@ fn main() {
     let opt = Opt::from_args();
     let gtfs = gtfs_structures::Gtfs::new(&opt.input).unwrap();
     gtfs.print_stats();
-    let timetable = structures::Timetable::from_gtfs(gtfs, &opt.first_day, opt.horizon);
+    let timetable = structures::Timetable::from_gtfs(&gtfs, &opt.first_day, opt.horizon);
     timetable.print_stats();
 
     let runs = 5;
