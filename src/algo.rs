@@ -157,6 +157,7 @@ pub fn compute(timetable: &Timetable, destinations: &[usize]) -> Vec<Vec<Profile
     profiles
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::structures::Footpath;
