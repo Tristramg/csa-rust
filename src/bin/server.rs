@@ -64,12 +64,8 @@ async fn compute(req: HttpRequest, timetable: web::Data<Timetable>) -> impl Resp
     let to = timetable.stop_index_by_stop_area_id(stop_area);
     let result = csa::algo::compute(&timetable, &to);
     let mut output = Vec::<Vec<_>>::new();
+
     for i in 0..timetable.stops.len() {
-        println!(
-            "Found {} results from {}",
-            result[i].len(),
-            timetable.stops[i].name
-        );
         let routes = result[i]
             .iter()
             .map(|profile| Summary::from(&profile.route(result.as_slice(), &timetable), &timetable))
@@ -89,7 +85,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .data(data.clone())
+            .app_data(data.clone())
             .route("/to/{stop_area}", web::get().to(compute))
     })
     .bind("127.0.0.1:8000")?
