@@ -38,10 +38,11 @@ impl Summary {
         connections: &[&csa::structures::Connection],
         timetable: &csa::structures::Timetable,
     ) -> Self {
-        let departure = connections.first().unwrap();
-        let arrival = connections.last().unwrap();
+        let departure = connections.first().expect("Missing departure in connexion");
+        let arrival = connections.last().expect("Missing arrival in connexion");
         let trips: std::collections::HashSet<_> = connections.iter().map(|c| c.trip).collect();
-        let dep_time = chrono::NaiveTime::from_num_seconds_from_midnight(departure.dep_time, 0);
+        let dep_time = chrono::NaiveTime::from_hms(0, 0, 0)
+            + chrono::Duration::seconds(departure.dep_time as i64); //chrono::NaiveTime::from_num_seconds_from_midnight(departure.dep_time, 0);
         let arr_time = chrono::NaiveTime::from_hms(0, 0, 0)
             + chrono::Duration::seconds(arrival.arr_time as i64);
 
