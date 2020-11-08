@@ -3,7 +3,7 @@ use itertools::Itertools;
 use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct Stop {
     pub id: String,
     pub name: String,
@@ -93,20 +93,20 @@ impl TimetableBuilder {
     }
     pub fn build(mut self) -> Timetable {
         self.connections.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
+        let mut stops = vec![Stop::default(); self.stop_map.len()];
+        for (name, idx) in self.stop_map.iter() {
+            stops[*idx] = Stop {
+                id: name.to_owned(),
+                name: name.to_owned(),
+                location_type: gtfs_structures::LocationType::StopPoint,
+                parent_station: None,
+            }
+        }
         Timetable {
             start_date: NaiveDate::from_yo(2019, 42),
             trips: self.trips,
             connections: self.connections,
-            stops: self
-                .stop_map
-                .iter()
-                .map(|(id, _)| Stop {
-                    id: id.to_owned(),
-                    name: id.to_owned(),
-                    location_type: gtfs_structures::LocationType::StopPoint,
-                    parent_station: None,
-                })
-                .collect(),
+            stops,
             footpaths: self.stop_map.iter().map(|_| Vec::new()).collect(),
             transform_duration: 0,
         }
@@ -313,5 +313,21 @@ mod tests {
         assert_eq!(4, t.stops.len());
         assert_eq!(2, t.trips.len());
         assert_eq!(3, t.connections.len());
+    }
+
+    #[test]
+    fn correct_stop() {
+        for _ in 0..10 {
+            let mut b = Timetable::builder();
+            b.trip()
+                .s("a", "0:10")
+                .s("b", "0:20")
+                .trip()
+                .s("b", "0:30")
+                .s("c", "0:40");
+
+            let t = b.build();
+            assert_eq!(t.stops[2].name, "c");
+        }
     }
 }
