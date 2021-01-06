@@ -22,7 +22,7 @@ impl<'a> From<&'a std::sync::Arc<gtfs_structures::Stop>> for Stop {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Connection {
     pub trip: usize,
     pub dep_time: u32,
@@ -210,7 +210,7 @@ impl Timetable {
         }
 
         // We want the connections by decreasing departure time
-        result.sort_by(|a, b| b.dep_time.cmp(&a.dep_time));
+        result.sort_by(|a, b| (b.dep_time, b.arr_time).cmp(&(a.dep_time, a.arr_time)));
         result
     }
 
